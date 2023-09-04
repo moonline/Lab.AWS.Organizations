@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Organization with AWS Organizations, Identity Center and SCPs
+
+
+Parameters:
+  env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+
+
+Resources:
+  OrganizationStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      Parameters: 
+        env: !Ref env
+      Tags: 
+        - Key: env
+          Value: !Ref env
+      TemplateURL: './organization.yml'
+      TimeoutInMinutes: 60
+
+
+
+Outputs:
+  ManagementAccountId:
+    Description: Account ID of the organizations management account
+    Value: !GetAtt
+      - OrganizationStack
+      - Outputs.Organization.ManagementAccountId
+  OrganizationArn:
+    Description: ID of the organization
+    Value: !GettAtt
+      - OrganizationStack
+      - Outputs.Organization.Arn
