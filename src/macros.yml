@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Concert API example application
+
+
+Parameters:
+  env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+
+
+Resources:
+  SsoAdminListInstancesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sso-admin-list-instances-${env}"
+      Description: Returns a list with the available IAM Identity Centers
+      Runtime: python3.9
+      Architectures:
+        - arm64
+      MemorySize: 128
+      InlineCode: |
+        import boto3        
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sso-admin/client/list_instances.html
+        client = boto3.client('sso-admin')
+        list_instances_result = client.list_instances(
+            MaxResults=10,
+        )
+        return list_instances_result['Instances']
+      Timeout: 120
+      Policies:
+        - AWSLambdaExecute
+        - AWSSSOReadOnly
+      Tags:
+        application: cloudformation-macros
+        env: !Ref env
+
+  SsoAdminListInstancesMacro:
+    Type: AWS::CloudFormation::Macro
+    Properties: 
+      Description: |
+        Get a list of IAM Identity Centers for this account
+
+        Usage:
+          InstanceId:
+            Fn::GetAtt              
+              - Fn::Select:
+                - "0"
+                - Fn::Transform:
+                    Name: SsoAdminListInstances
+              - "InstanceArn"
+        
+        Returns:
+          [
+            {
+              'InstanceArn': 'string',
+              'IdentityStoreId': 'string'
+            }
+        ]
+      FunctionName: !GetAtt SsoAdminListInstancesFunction.Arn
+      Name: SsoAdminListInstances
