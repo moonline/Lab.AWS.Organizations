@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Identity Center with permission sets
+
+
+Parameters:
+  env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+
+
+Resources:
+  # TODO Identity Center
+  
+  AdministratorPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Description: Administrator, allowed to do everything
+      InstanceArn: String # TODO
+      ManagedPolicies: 
+        - AdministratorAccess
+      Name: Administrator
+      Tags: 
+        - Key: env
+          Value: !Ref env
+  PowerUserPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Description: PowerUser, based on AWS PowerUser policy
+      InstanceArn: String # TODO
+      ManagedPolicies: 
+        - PowerUserAccess
+      Name: PowerUser
+      Tags: 
+        - Key: env
+          Value: !Ref env
+
+
+Outputs:
