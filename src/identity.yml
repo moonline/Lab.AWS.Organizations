@@ -13,6 +13,10 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  # https://dev.to/hayao_k/how-to-manage-aws-sso-account-assignments-in-cloudformaton-5bmm
+  identityCenterInstanceArn:
+    Type: String
+    Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
 
 
 Resources:
@@ -22,7 +26,7 @@ Resources:
     Type: AWS::SSO::PermissionSet
     Properties:
       Description: Administrator, allowed to do everything
-      InstanceArn: String # TODO
+      InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies: 
         - AdministratorAccess
       Name: Administrator
@@ -32,11 +36,22 @@ Resources:
   PowerUserPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
-      Description: PowerUser, based on AWS PowerUser policy
-      InstanceArn: String # TODO
+      Description: Power user based on AWS PowerUser policy
+      InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies: 
         - PowerUserAccess
       Name: PowerUser
+      Tags: 
+        - Key: env
+          Value: !Ref env
+  ReadOnlyPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Description: Read only access based on AWS ReadOnlyAccess policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies: 
+        - ReadOnlyAccess
+      Name: ReadOnly
       Tags: 
         - Key: env
           Value: !Ref env
