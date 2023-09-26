@@ -3,40 +3,36 @@ Transform: AWS::Serverless-2016-10-31
 
 Description: Organization with AWS Organizations, Identity Center and SCPs
 
-
 Parameters:
-  env:
+  environment:
     Type: String
-    Default: dev
+    Default: prod
     AllowedValues:
       - dev
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
 
-
 Resources:
   OrganizationStack:
     Type: AWS::CloudFormation::Stack
-    Properties: 
-      Parameters: 
-        env: !Ref env
-      Tags: 
-        - Key: env
-          Value: !Ref env
-      TemplateURL: './organization.yml'
+    Properties:
+      Parameters:
+        environment: !Ref environment
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./organization.yml"
       TimeoutInMinutes: 60
-
-
 
 Outputs:
   ManagementAccountId:
     Description: Account ID of the organizations management account
     Value: !GetAtt
       - OrganizationStack
-      - Outputs.Organization.ManagementAccountId
+      - Outputs.ManagementAccountId
   OrganizationArn:
     Description: ID of the organization
-    Value: !GettAtt
+    Value: !GetAtt
       - OrganizationStack
-      - Outputs.Organization.Arn
+      - Outputs.OrganizationArn

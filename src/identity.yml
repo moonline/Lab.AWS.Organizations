@@ -3,9 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 
 Description: Identity Center with permission sets
 
-
 Parameters:
-  env:
+  environment:
     Type: String
     Default: dev
     AllowedValues:
@@ -18,43 +17,41 @@ Parameters:
     Type: String
     Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
 
-
 Resources:
   # TODO Identity Center
-  
+
   AdministratorPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
       Description: Administrator, allowed to do everything
       InstanceArn: !Ref identityCenterInstanceArn
-      ManagedPolicies: 
+      ManagedPolicies:
         - AdministratorAccess
       Name: Administrator
-      Tags: 
-        - Key: env
-          Value: !Ref env
+      Tags:
+        - Key: environment
+          Value: !Ref environment
   PowerUserPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
       Description: Power user based on AWS PowerUser policy
       InstanceArn: !Ref identityCenterInstanceArn
-      ManagedPolicies: 
+      ManagedPolicies:
         - PowerUserAccess
       Name: PowerUser
-      Tags: 
-        - Key: env
-          Value: !Ref env
+      Tags:
+        - Key: environment
+          Value: !Ref environment
   ReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
       Description: Read only access based on AWS ReadOnlyAccess policy
       InstanceArn: !Ref identityCenterInstanceArn
-      ManagedPolicies: 
+      ManagedPolicies:
         - ReadOnlyAccess
       Name: ReadOnly
-      Tags: 
-        - Key: env
-          Value: !Ref env
-
+      Tags:
+        - Key: environment
+          Value: !Ref environment
 
 Outputs:

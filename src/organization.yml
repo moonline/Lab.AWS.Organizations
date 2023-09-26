@@ -3,41 +3,38 @@ Transform: AWS::Serverless-2016-10-31
 
 Description: Basic Organization with AWS Organizations
 
-
 Parameters:
-  env:
+  environment:
     Type: String
-    Default: dev
+    Default: prod
     AllowedValues:
       - dev
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
 
-
 Resources:
   Organization:
     DeletionPolicy: Retain
-    Type: 'AWS::Organizations::Organization'
+    Type: "AWS::Organizations::Organization"
     Properties:
       FeatureSet: ALL
-  DevelopmentOrganizationalUnit:
-    Type: AWS::Organizations::OrganizationalUnit
-    Properties: 
-      Name: development
-      ParentId: !GetAtt Organization.Id
-      Tags: 
-        - Key: environment
-          Value: dev
-  ProductionOrganizationalUnit:
-    Type: AWS::Organizations::OrganizationalUnit
-    Properties: 
-      Name: production
-      ParentId: !GetAtt Organization.Id
-      Tags: 
-        - Key: environment
-          Value: prod
-
+  # DevelopmentOrganizationalUnit:
+  #   Type: AWS::Organizations::OrganizationalUnit
+  #   Properties:
+  #     Name: development
+  #     ParentId: !GetAtt Organization.Id
+  #     Tags:
+  #       - Key: environment
+  #         Value: dev
+  # ProductionOrganizationalUnit:
+  #   Type: AWS::Organizations::OrganizationalUnit
+  #   Properties:
+  #     Name: production
+  #     ParentId: !GetAtt Organization.Id
+  #     Tags:
+  #       - Key: environment
+  #         Value: prod
 
 Outputs:
   ManagementAccountId:
@@ -45,10 +42,10 @@ Outputs:
     Value: !GetAtt Organization.ManagementAccountId
   ManagementAccountArn:
     Description: Account ARN of the organizations management account
-    Value: !GettAtt Organization.ManagementAccountArn
+    Value: !GetAtt Organization.ManagementAccountArn
   OrganizationId:
     Description: ID of the organization
-    Value: !GettAtt Organization.Id
+    Value: !GetAtt Organization.Id
   OrganizationArn:
     Description: ID of the organization
-    Value: !GettAtt Organization.Arn
+    Value: !GetAtt Organization.Arn

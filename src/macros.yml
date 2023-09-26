@@ -3,9 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 
 Description: Concert API example application
 
-
 Parameters:
-  env:
+  environment:
     Type: String
     Default: dev
     AllowedValues:
@@ -13,7 +12,6 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
-
 
 Resources:
   SsoAdminListInstancesFunction:
@@ -39,11 +37,11 @@ Resources:
         - AWSSSOReadOnly
       Tags:
         application: cloudformation-macros
-        env: !Ref env
+        environment: !Ref environment
 
   SsoAdminListInstancesMacro:
     Type: AWS::CloudFormation::Macro
-    Properties: 
+    Properties:
       Description: |
         Get a list of IAM Identity Centers for this account
 
@@ -55,7 +53,7 @@ Resources:
                 - Fn::Transform:
                     Name: SsoAdminListInstances
               - "InstanceArn"
-        
+
         Returns:
           [
             {
