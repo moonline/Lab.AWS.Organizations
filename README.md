@@ -12,11 +12,11 @@ title: Organization
 ---
 flowchart TB
     root([AWS Organization Root])
-        root --- dev(DevelopmentOU)
-            dev --- project1(DevProjectOU)
-                project1 --- project1Sandbox[DevProject1Sandbox]
+    root --- dev(DevelopmentOU)
+    dev --- project1(DevProjectOU)
+    project1 --- project1Sandbox[DevProject1Sandbox]
 
-        root --- prod(ProductionOU)
+    root --- prod(ProductionOU)
 ```
 
 
