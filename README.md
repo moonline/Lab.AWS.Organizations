@@ -11,12 +11,12 @@ A basic setup of an AWS Organization with AWS SAM
 title: Organization
 ---
 flowchart TB
-    root([AWS Organization Root]);
-        root --- dev(DevelopmentOU);
-            dev --- project1(DevProjectOU);
-                project1 --- project1Sandbox[DevProject1Sandbox];
+    root([AWS Organization Root])
+        root --- dev(DevelopmentOU)
+            dev --- project1(DevProjectOU)
+                project1 --- project1Sandbox[DevProject1Sandbox]
 
-        root --- prod(ProductionOU);
+        root --- prod(ProductionOU)
 ```
 
 
