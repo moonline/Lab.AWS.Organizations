@@ -18,40 +18,52 @@ Parameters:
     Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
 
 Resources:
-  # TODO Identity Center
-
   AdministratorPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
+      Name: Administrator
       Description: Administrator, allowed to do everything
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
-        - AdministratorAccess
-      Name: Administrator
+        - arn:aws:iam::aws:policy/AdministratorAccess
       Tags:
         - Key: environment
           Value: !Ref environment
+
   PowerUserPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
+      Name: PowerUser
       Description: Power user based on AWS PowerUser policy
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
-        - PowerUserAccess
-      Name: PowerUser
+        - arn:aws:iam::aws:policy/PowerUserAccess
       Tags:
         - Key: environment
           Value: !Ref environment
+
   ReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
     Properties:
+      Name: ReadOnly
       Description: Read only access based on AWS ReadOnlyAccess policy
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
-        - ReadOnlyAccess
-      Name: ReadOnly
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
       Tags:
         - Key: environment
           Value: !Ref environment
 
 Outputs:
+  PermissionSets:
+    Description: Identity center permission sets
+    Value: !Sub
+      - |
+        {
+          "Administrator": "${AdministratorPermissionSetArn}",
+          "PowerUser": "${PowerUserPermissionSetArn}",
+          "ReadOnly": "${ReadOnlyPermissionSetArn}"
+        }
+      - AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+        PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
+        ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn

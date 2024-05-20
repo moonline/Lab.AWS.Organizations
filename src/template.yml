@@ -12,6 +12,18 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  identityCenterInstanceArn:
+    Type: String
+    Description: >
+      ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'.
+      Find by `aws sso-admin list-instances`.
+    Default: ""
+  organizationEmail:
+    Type: String
+    Description: An email address like 'aws@your-domain.tld'
+
+Conditions:
+  HasIdentityCenterInstance: !Not [!Equals [!Ref identityCenterInstanceArn, ""]]
 
 Resources:
   OrganizationStack:
@@ -19,20 +31,43 @@ Resources:
     Properties:
       Parameters:
         environment: !Ref environment
+        organizationEmail: !Ref organizationEmail
       Tags:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./organization.yml"
       TimeoutInMinutes: 60
 
+  IdentityStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: HasIdentityCenterInstance
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        identityCenterInstanceArn:
+          !If [
+            "HasIdentityCenterInstance",
+            !Ref identityCenterInstanceArn,
+            !Ref "AWS::NoValue",
+          ]
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./identity.yml"
+      TimeoutInMinutes: 60
+
 Outputs:
   ManagementAccountId:
     Description: Account ID of the organizations management account
-    Value: !GetAtt
-      - OrganizationStack
-      - Outputs.ManagementAccountId
+    Value: !GetAtt OrganizationStack.Outputs.ManagementAccountId
   OrganizationArn:
     Description: ID of the organization
-    Value: !GetAtt
-      - OrganizationStack
-      - Outputs.OrganizationArn
+    Value: !GetAtt OrganizationStack.Outputs.OrganizationArn
+  PermissionSets:
+    Description: Identity center permission sets
+    Value:
+      !If [
+        HasIdentityCenterInstance,
+        !GetAtt IdentityStack.Outputs.PermissionSets,
+        "",
+      ]

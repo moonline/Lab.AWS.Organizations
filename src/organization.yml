@@ -12,6 +12,9 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  organizationEmail:
+    Type: String
+    Description: An email address like 'aws@your-domain.tld'
 
 Resources:
   Organization:
@@ -19,22 +22,49 @@ Resources:
     Type: "AWS::Organizations::Organization"
     Properties:
       FeatureSet: ALL
-  # DevelopmentOrganizationalUnit:
-  #   Type: AWS::Organizations::OrganizationalUnit
-  #   Properties:
-  #     Name: development
-  #     ParentId: !GetAtt Organization.Id
-  #     Tags:
-  #       - Key: environment
-  #         Value: dev
-  # ProductionOrganizationalUnit:
-  #   Type: AWS::Organizations::OrganizationalUnit
-  #   Properties:
-  #     Name: production
-  #     ParentId: !GetAtt Organization.Id
-  #     Tags:
-  #       - Key: environment
-  #         Value: prod
+
+  DevelopmentOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: dev
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: dev
+
+  DevProject1OU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: dev-project1
+      ParentId: !Ref DevelopmentOU
+      Tags:
+        - Key: environment
+          Value: dev
+
+  DevProject1SandboxAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: dev-project1-sandbox
+      Email: !Sub
+        - "${prefix}+${accountName}@${organizationMailDomain}"
+        - prefix: !Select [0, !Split ["@", !Ref organizationEmail]]
+          accountName: dev-project1-sandbox
+          organizationMailDomain:
+            !Select [1, !Split ["@", !Ref organizationEmail]]
+      ParentIds:
+        - !Ref DevProject1OU
+      Tags:
+        - Key: environment
+          Value: dev
+
+  ProductionOrganizationalUnit:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: prod
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: prod
 
 Outputs:
   ManagementAccountId:
@@ -47,5 +77,5 @@ Outputs:
     Description: ID of the organization
     Value: !GetAtt Organization.Id
   OrganizationArn:
-    Description: ID of the organization
+    Description: ARN of the organization
     Value: !GetAtt Organization.Arn
