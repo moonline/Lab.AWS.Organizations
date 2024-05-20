@@ -1,3 +1,4 @@
 # SAM
 .aws-sam
 *.private.yml
+samparameters.json

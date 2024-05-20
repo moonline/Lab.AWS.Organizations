@@ -55,22 +55,45 @@ sam build
 
 ### SAM deploy
 
-1. Deploy or organization
+1. Copy `organization.tmpl.yml` to `organization.yml` and define organizational units and accounts.
+2. Deploy organization without SSO (ommit parameter `identityCenterInstanceArn`!):
     ```sh
     sam deploy --config-env prod --parameter-overrides "organizationEmail=aws@your-domain.tld"
     ```
 
-2. Enable Identity Center in AWS Organizations console https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/AWS%20IAM%20Identity%20Center%20(AWS%20Single%20Sign-On)
-3. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
-4. Get identity center instance ARN
+3. Enable Identity Center in AWS Organizations console https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/AWS%20IAM%20Identity%20Center%20(AWS%20Single%20Sign-On)
+4. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
+5. Get identity center instance ARN
     ```sh
     aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0].InstanceArn'
     ```
-5. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
+    
+6. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
     ```sh
-    sam deploy --config-env prod --parameter-overrides "organizationEmail=aws@your-domain.tld" "identityCenterInstanceArn=arn:aws:sso:::instance/ssoins-***"
+    sam deploy --config-env prod --parameter-overrides \
+        "organizationEmail=aws@your-domain.tld" \
+        "identityCenterInstanceArn=arn:aws:sso:::instance/ssoins-***"
     ```
 
+    Alternatively a `samparameters.json` file can be created with these parameters:
+    ```json
+    {
+        "default": {
+            // ...
+        },
+        "prod": {
+            "organizationEmail": "aws@your-domain.tld",
+            "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-***"
+        }
+    }
+    ```
+    And the parameters can be injected when deploying (Change `.prod` prod to corresponding environment):
+    ```sh
+    sam deploy --config-env prod --parameter-overrides \
+        $(cat samparameters.json | jq -r '.prod | to_entries | map([.key, .value]|join("=")) | join(" ")')
+    ```
+
+### Get outputs
 
 ```sh
 # Stack outputs
