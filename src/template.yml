@@ -40,6 +40,7 @@ Resources:
 
   IdentityStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: OrganizationStack
     Condition: HasIdentityCenterInstance
     Properties:
       Parameters:
@@ -54,6 +55,19 @@ Resources:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./identity.yml"
+      TimeoutInMinutes: 60
+
+  PolicyStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: OrganizationStack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./policies.yml"
       TimeoutInMinutes: 60
 
 Outputs:

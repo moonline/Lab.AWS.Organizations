@@ -19,7 +19,7 @@ Parameters:
 Resources:
   Organization:
     DeletionPolicy: Retain
-    Type: "AWS::Organizations::Organization"
+    Type: AWS::Organizations::Organization
     Properties:
       FeatureSet: ALL
 
@@ -76,6 +76,9 @@ Outputs:
   OrganizationId:
     Description: ID of the organization
     Value: !GetAtt Organization.Id
+  OrganizationRootId:
+    Description: Root ID of the organization
+    Value: !GetAtt Organization.RootId
   OrganizationArn:
     Description: ARN of the organization
     Value: !GetAtt Organization.Arn

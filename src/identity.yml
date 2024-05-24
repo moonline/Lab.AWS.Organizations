@@ -59,11 +59,9 @@ Outputs:
     Description: Identity center permission sets
     Value: !Sub
       - |
-        {
-          "Administrator": "${AdministratorPermissionSetArn}",
-          "PowerUser": "${PowerUserPermissionSetArn}",
-          "ReadOnly": "${ReadOnlyPermissionSetArn}"
-        }
+        Administrator: "${AdministratorPermissionSetArn}"
+        PowerUser: "${PowerUserPermissionSetArn}"
+        ReadOnly: "${ReadOnlyPermissionSetArn}"
       - AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
         PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
         ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn

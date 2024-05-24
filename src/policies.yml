@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Organization service control policies
+# Examples see https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_examples_general.html
+
+Parameters:
+  environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment e.g. dev for development
+  organizationRootId:
+    Type: String
+    Description: Root ID of the organization
+
+Resources:
+  # https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_examples_general.html#example-scp-deny-region
+  EnableSupportedRegionsOnlyPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Type: SERVICE_CONTROL_POLICY
+      Name: !Sub "SCPDenyNotSupportedRegions-${environment}"
+      TargetIds:
+        - !Ref organizationRootId
+      Content:
+        Version: 2012-10-17
+        Statement:
+          - Sid: !Sub "SCPDenyAllOutsideRequestedRegions"
+            Effect: Deny
+            NotAction:
+              - "a4b:*"
+              - "acm:*"
+              - "aws-marketplace-management:*"
+              - "aws-marketplace:*"
+              - "aws-portal:*"
+              - "budgets:*"
+              - "ce:*"
+              - "chime:*"
+              - "cloudfront:*"
+              - "config:*"
+              - "cur:*"
+              - "directconnect:*"
+              - "ec2:DescribeRegions"
+              - "ec2:DescribeTransitGateways"
+              - "ec2:DescribeVpnGateways"
+              - "fms:*"
+              - "globalaccelerator:*"
+              - "health:*"
+              - "iam:*"
+              - "importexport:*"
+              - "kms:*"
+              - "mobileanalytics:*"
+              - "networkmanager:*"
+              - "organizations:*"
+              - "pricing:*"
+              - "route53:*"
+              - "route53domains:*"
+              - "route53-recovery-cluster:*"
+              - "route53-recovery-control-config:*"
+              - "route53-recovery-readiness:*"
+              - "s3:GetAccountPublic*"
+              - "s3:ListAllMyBuckets"
+              - "s3:ListMultiRegionAccessPoints"
+              - "s3:PutAccountPublic*"
+              - "shield:*"
+              - "sts:*"
+              - "support:*"
+              - "trustedadvisor:*"
+              - "waf-regional:*"
+              - "waf:*"
+              - "wafv2:*"
+              - "wellarchitected:*"
+            Resource: "*"
+            Condition:
+              # Enabled regions
+              # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html
+              StringNotEquals:
+                aws:RequestedRegion:
+                  - us-east-1 # US East (N. Virginia)
+                  - sa-east-1 # South America (São Paulo)
+                  - eu-central-1 # Europe (Frankfurt)
+                  - eu-central-2 # Europe (Zurich)
+              # Superuser allowed to bypass region block
+              # ArnNotLike:
+              #   aws:PrincipalARN:
+              #     - arn:aws:iam::*:role/OrganizationAdministrator
