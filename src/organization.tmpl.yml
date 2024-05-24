@@ -14,6 +14,7 @@ Parameters:
     Description: Deployment environment, e.g. dev for development
   organizationEmail:
     Type: String
+    AllowedPattern: ^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
     Description: An email address like 'aws@your-domain.tld'
 
 Resources:

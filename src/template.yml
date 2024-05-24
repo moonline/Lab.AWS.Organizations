@@ -14,12 +14,14 @@ Parameters:
     Description: Deployment environment, e.g. dev for development
   identityCenterInstanceArn:
     Type: String
+    AllowedPattern: (^$|^arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16})
     Description: >
       ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'.
       Find by `aws sso-admin list-instances`.
     Default: ""
   organizationEmail:
     Type: String
+    AllowedPattern: ^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
     Description: An email address like 'aws@your-domain.tld'
 
 Conditions:
@@ -59,7 +61,6 @@ Resources:
 
   PolicyStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: OrganizationStack
     Properties:
       Parameters:
         environment: !Ref environment
