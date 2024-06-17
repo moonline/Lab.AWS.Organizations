@@ -1,5 +1,11 @@
 # AWS Organizations service access custom resource
 
+List existing access:
+
+```shell
+aws organizations list-aws-service-access-for-organization
+```
+
 ## Syntax
 
 To declare this entity in your AWS CloudFormation template, use the same syntax as Custom Resources.

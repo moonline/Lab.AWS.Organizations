@@ -1,5 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
-Transform: AWS::Serverless-2016-10-31
+
+# WARNING
+# Stack sets with service-managed permissions don't currently support the use of macros in templates. (This includes the AWS::Include and AWS::Serverless transforms, which are macros hosted by CloudFormation.)
+# See https://docs.aws.amazon.com/cli/latest/reference/cloudformation/create-stack-set.html
 
 Description: Organization policies
 

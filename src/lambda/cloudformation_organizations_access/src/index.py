@@ -3,6 +3,8 @@ from crhelper import CfnResource
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from helpers import is_service_enabled
+
 
 logger = Logger()
 cloudformation_client = boto3.client('cloudformation')
@@ -25,7 +27,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
             "StackId": "arn:aws:cloudformation:eu-central-1:123456789012:stack/aabbccdd-1234-aabb-1234-aabbccddeeff/0be779b0-16d1-11ef-a3b1-0634a5b1d8ed",
             "RequestId": "uuvvwwxx-5566-yyzz-6677-ffgghhiijjkk",
             "LogicalResourceId": "EnableCloudformationOrganizationsAccessCustomResource",
-            "ResourceType": "Custom::EnableCloudformationOrganizationsAccess",
+            "ResourceType": ""AWS::CloudFormation::CustomResource",
             "ResourceProperties": {
                 "ServiceToken": "arn:aws:lambda:eu-central-1:123456789012:function:cloudformation-organizations-access-prod",
                 "ServiceTimeout": "30"
@@ -38,67 +40,56 @@ def handler(event: dict, context: LambdaContext) -> dict:
 
 @cfn_helper.create
 def create(event, context):
-    logger.info('Handle create')
-
-    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sso-admin/client/list_instances.html
     '''
-    TODO
-    Example response:
+    Activate trusted access between StackSets and Organizations
+    '''
+    if not is_service_enabled(cloudformation_client):
+        activate_response = cloudformation_client.activate_organizations_access()
+        '''
+        Example response:
         {
-            'Instances': [
-                {
-                    'CreatedDate': datetime(2015, 1, 1),
-                    'IdentityStoreId': 'string',
-                    'InstanceArn': 'string',
-                    'Name': 'string',
-                    'OwnerAccountId': 'string',
-                    'Status': 'CREATE_IN_PROGRESS'|'DELETE_IN_PROGRESS'|'ACTIVE'
+            "ResponseMetadata": {
+                "RequestId": "d20b35b2-fc1d-423e-8d12-a569d5f53cd1",
+                "HTTPStatusCode": 200,
+                "HTTPHeaders": {
+                    "x-amzn-requestid": "d20b35b2-fc1d-423e-8d12-a569d5f53cd1",
+                    "date": "Mon, 17 Jun 2024 13:45:05 GMT",
+                    "content-type": "text/xml",
+                    "content-length": "283",
+                    "connection": "keep-alive"
                 },
-            ],
-            'NextToken': 'string'
+                "RetryAttempts": 0
+            }
         }
-    '''
-    activate_response = cloudformation_client.activate_organizations_access()
-    logger.info('activate_response', extra={
-                'activate_response': activate_response})
+        '''
+        logger.info(
+            'activate_response',
+            extra={'activate_response': activate_response}
+        )
+    else:
+        logger.info(f'trusted access already active')
 
-    # Items stored in cfn_helper.Data will be saved
-    # as outputs in your resource in CloudFormation
-    cfn_helper.Data.update({
-        # ,'.join([instance['InstanceArn'] for instance in list_instances_result['Instances']])
-        'instances': 'Bla'
-    })
-    '''
-    Example:
-        {
-            "Status": "SUCCESS",
-            "PhysicalResourceId": "SsoAdminListInstances",
-            "StackId": "arn:aws:cloudformation:eu-central-1:123456789012:stack/organization/aabbccdd-1234-aabb-1234-aabbccddeeff",
-            "RequestId": "uuvvwwxx-5566-yyzz-6677-ffgghhiijjkk",
-            "LogicalResourceId": "SsoInstance",
-            "Reason": "",
-            "Data": {
-                "instances": []
-            },
-            "NoEcho": false
-        }
-    '''
-    logger.info('Helper data', extra={'helper_data': cfn_helper.Data})
-
-    #return 'SsoAdminListInstances'
+    return 'cloudformation_organizations_access'
 
 
 @cfn_helper.update
 def update(event, context):
-    logger.info('Handle update')
     pass
 
 
 @cfn_helper.delete
 def delete(event, context):
-    logger.info('Handle delete')
+    '''
+    Activate trusted access between StackSets and Organizations
+    '''
 
-    deactivate_response = cloudformation_client.deactivate_organizations_access()
+    if is_service_enabled(cloudformation_client):
+        deactivate_response = cloudformation_client.deactivate_organizations_access()
+        logger.info(
+            'deactivate_response',
+            extra={'deactivate_response': deactivate_response}
+        )
+    else:
+        logger.info(f'trusted access already inactive')
 
-    logger.info('deactivate_response', extra={
-                'deactivate_response': deactivate_response})
+    return 'cloudformation_organizations_access'

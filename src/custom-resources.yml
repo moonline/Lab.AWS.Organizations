@@ -12,6 +12,9 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  organizationId:
+    Type: String
+    Description: Organization ID
   architecture:
     Type: String
     Default: arm64
@@ -49,6 +52,19 @@ Resources:
     Metadata:
       BuildMethod: !Ref pythonVersion
 
+  CloudformationOrganizationsAccessLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "cloudformation-organizations-access-dependencies-${environment}"
+      Description: CloudformationOrganizationsAccessFunction dependencies
+      ContentUri: "./lambda/cloudformation_organizations_access/dependencies"
+      CompatibleRuntimes:
+        - !Ref pythonVersion
+      CompatibleArchitectures:
+        - !Ref architecture
+    Metadata:
+      BuildMethod: !Ref pythonVersion
+
   CloudformationOrganizationsAccessFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -60,6 +76,7 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
+        - !Ref CloudformationOrganizationsAccessLayer
       Architectures:
         - !Ref architecture
       MemorySize: 128
@@ -74,26 +91,35 @@ Resources:
         - AWSLambdaExecute
         - Version: "2012-10-17"
           Statement:
-            - Effect: Allow
+            # https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services.html
+            - Sid: AllowEnableDisableOrganizationsAccess
+              Effect: Allow
               Action:
                 - organizations:ListAWSServiceAccessForOrganization
+                - organizations:DescribeOrganization
                 - organizations:EnableAWSServiceAccess
                 - organizations:DisableAWSServiceAccess
               Resource: "*" # Only * supported
-            - Effect: Allow
+              Condition:
+                StringEquals:
+                  "aws:PrincipalOrgId":
+                    - !Ref organizationId
+            - Sid: AllowServiceLinkedRoleCreation
+              Effect: Allow
               Action:
                 - iam:GetRole
-                # - iam:PassRole
                 - iam:CreateServiceLinkedRole
               Resource:
                 - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/stacksets.cloudformation.amazonaws.com/"
                 - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/stacksets.cloudformation.amazonaws.com/*"
-            - Effect: Allow
+            - Sid: AllowActivateDeactivateCloudFormationOrganizationsAccess
+              Effect: Allow
               Action:
                 - cloudformation:DescribeOrganizationsAccess
                 - cloudformation:ActivateOrganizationsAccess
                 - cloudformation:DeactivateOrganizationsAccess
               Resource: "*" # Only * supported
+
       Tags:
         application: cloudformation-custom-resources
         environment: !Ref environment
@@ -111,6 +137,19 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  OrganizationsAwsServiceAccessLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "organizations-aws-service-access-dependencies-${environment}"
+      Description: OrganizationsAwsServiceAccessFunction dependencies
+      ContentUri: "./lambda/organizations_aws_service_access/dependencies"
+      CompatibleRuntimes:
+        - !Ref pythonVersion
+      CompatibleArchitectures:
+        - !Ref architecture
+    Metadata:
+      BuildMethod: !Ref pythonVersion
+
   OrganizationsAwsServiceAccessFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -122,6 +161,7 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
+        - !Ref OrganizationsAwsServiceAccessLayer
       Architectures:
         - !Ref architecture
       MemorySize: 128

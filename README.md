@@ -5,6 +5,7 @@ A basic setup of an AWS Organization with AWS SAM
 ## Custom Resources for Cloudformation
 
 * Organizations access: [organizations_aws_service_access](src/lambda/organizations_aws_service_access/README.md)
+* CloudFormation organizations access: [cloudformation_organizations_access](src/lambda/cloudformation_organizations_access/README.md)
 
 
 ## Architecture
@@ -31,12 +32,13 @@ title: Organization deployment
 ---
 flowchart TB
     organization(Deploy AWS Organization)
-        organization --- enableCloudTrail(Enable CloudTrail organization access)
-            enableCloudTrail --- cloudTrailBucket(Deploy CloudTrail logs bucket & policy)
-                cloudTrailBucket --- cloudTrail(Deploy CloudTrail trail)
+        organization --- enableCloudTrail[Enable CloudTrail organization access]
+            enableCloudTrail --> cloudTrailBucket(Deploy CloudTrail logs bucket & policy)
+                cloudTrailBucket --> cloudTrail(Deploy CloudTrail trail)
 
-        organization --- enableSSO(Enable SSO organization access)
-            enableSSO --- permissionSets(Deploy PermissionSets)
+        organization --- enableSSO[Enable SSO organization access]
+            enableSSO --> enableCloudformation[Enable Cloudformation organization access]
+                enableCloudformation --> permissionSets(Deploy PermissionSets)
 ```
 
 

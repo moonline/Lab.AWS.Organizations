@@ -29,18 +29,30 @@ Parameters:
   organizationsAwsServiceAccessFunctionArn:
     Type: String
     Description: AWS Service Access custom resource Lambda function ARN
+  cloudformationOrganizationsAccessFunctionArn:
+    Type: String
+    Description: Cloudformation organizations access custom resource Lambda function ARN
 
 Resources:
-  EnableCloudformationStackSetsOrganizationsAccessCustomResource:
-    Type: AWS::CloudFormation::CustomResource
-    Properties:
-      ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
-      ServiceTimeout: 30
-      service: "member.org.stacksets.cloudformation.amazonaws.com"
+  # EnableCloudformationStackSetsOrganizationsAccessCustomResource:
+  #   Type: AWS::CloudFormation::CustomResource
+  #   Properties:
+  #     ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
+  #     ServiceTimeout: 30
+  #     service: "member.org.stacksets.cloudformation.amazonaws.com"
+
+  # EnableCloudformationOrganizationsAccessCustomResource:
+  #   Type: AWS::CloudFormation::CustomResource
+  #   Properties:
+  #     ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
+  #     ServiceTimeout: 30
 
   # Policies
   # OrganizationPoliciesStackSet:
   #   Type: AWS::CloudFormation::StackSet
+  #   DependsOn:
+  #   #  - EnableCloudformationStackSetsOrganizationsAccessCustomResource
+  #     - EnableCloudformationOrganizationsAccessCustomResource
   #   Properties:
   #     StackSetName: !Sub "OrganizationPolicies-${environment}"
   #     Description: Managed organization policies for each account

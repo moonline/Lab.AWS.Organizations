@@ -39,17 +39,6 @@ Conditions:
   HasIdentityCenterInstance: !Not [!Equals [!Ref identityCenterInstanceArn, ""]]
 
 Resources:
-  CustomResourcesStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      Parameters:
-        environment: !Ref environment
-      Tags:
-        - Key: environment
-          Value: !Ref environment
-      TemplateURL: "./custom-resources.yml"
-      TimeoutInMinutes: 60
-
   OrganizationStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -60,6 +49,18 @@ Resources:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./organization.yml"
+      TimeoutInMinutes: 60
+
+  CustomResourcesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        organizationId: !GetAtt OrganizationStack.Outputs.OrganizationId
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./custom-resources.yml"
       TimeoutInMinutes: 60
 
   LoggingStack:
@@ -91,6 +92,7 @@ Resources:
         organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
         supportedRegions: !Ref supportedRegions
         organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
+        cloudformationOrganizationsAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.CloudformationOrganizationsAccessFunctionArn
       Tags:
         - Key: environment
           Value: !Ref environment
