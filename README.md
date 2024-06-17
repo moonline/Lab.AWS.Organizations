@@ -22,6 +22,21 @@ flowchart TB
 
 ## Development
 
+```mermaid
+---
+title: Organization deployment
+---
+flowchart TB
+    organization(Deploy AWS Organization)
+        organization --- enableCloudTrail(Enable CloudTrail organization access)
+            enableCloudTrail --- cloudTrailBucket(Deploy CloudTrail logs bucket & policy)
+                cloudTrailBucket --- cloudTrail(Deploy CloudTrail trail)
+
+        organization --- enableSSO(Enable SSO organization access)
+            enableSSO --- permissionSets(Deploy PermissionSets)
+```
+
+
 ### Dependencies
 
 1. Install latest AWS CLI https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html
@@ -76,19 +91,8 @@ sam build
         "identityCenterInstanceArn=arn:aws:sso:::instance/ssoins-***"
     ```
 
-    Alternatively a `samparameters.json` file can be created with these parameters:
-    ```json
-    {
-        "default": {
-            // ...
-        },
-        "prod": {
-            "organizationEmail": "aws@your-domain.tld",
-            "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-***"
-        }
-    }
-    ```
-    And the parameters can be injected when deploying (Change `.prod` prod to corresponding environment):
+    Alternatively a `samparameters.json` file can be created (see template `samparameters.tmpl.json`)
+    and the parameters can be injected when deploying (Change `.prod` to corresponding environment):
     ```sh
     sam deploy --config-env prod --parameter-overrides \
         $(cat samparameters.json | jq -r '.prod | to_entries | map([.key, .value]|join("=")) | join(" ")')

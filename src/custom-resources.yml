@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Custom resources for AWS Organizations
+
+Parameters:
+  environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  architecture:
+    Type: String
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+    Description: Compute architecture, e.g. arm64
+  powertoolsNameVersion:
+    Type: String
+    Default: AWSLambdaPowertoolsPythonV2-Arm64:73
+    Description: Powertools name and version, e.g. AWSLambdaPowertoolsPythonV2-Arm64:71
+  pythonVersion:
+    Type: String
+    Default: python3.9
+    Description: Python version, e.g. python3.9
+
+Conditions:
+  IsEnvProd: !Equals
+    - !Ref environment
+    - futureprod # TODO "prod"
+
+Resources:
+  # https://www.alexdebrie.com/posts/cloudformation-custom-resources/
+  CustomResourceHelperLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      # https://docs.aws.amazon.com/lambda/latest/dg/layers-sam.html
+      LayerName: !Sub "custom-resource-helper-${environment}"
+      Description: Custom Resource Helper for Python https://github.com/aws-cloudformation/custom-resource-helper
+      ContentUri: "./lambda/custom_resource_helper/dependencies"
+      CompatibleRuntimes:
+        - !Ref pythonVersion
+      CompatibleArchitectures:
+        - !Ref architecture
+    Metadata:
+      BuildMethod: !Ref pythonVersion
+
+  CloudformationOrganizationsAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "cloudformation-organizations-access-${environment}"
+      Description: Enable/disable trusted access for cloudformation
+      Handler: index.handler
+      Runtime: !Ref pythonVersion
+      CodeUri: "./lambda/cloudformation_organizations_access/src"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !Ref CustomResourceHelperLayer
+      Architectures:
+        - !Ref architecture
+      MemorySize: 128
+      Timeout: 30
+      Environment:
+        Variables:
+          LOG_LEVEL: !If [IsEnvProd, "WARNING", "INFO"]
+          POWERTOOLS_LOGGER_LOG_EVENT: !If [IsEnvProd, false, true]
+          POWERTOOLS_SERVICE_NAME: cloudformation_organizations_access
+          POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+      Policies:
+        - AWSLambdaExecute
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - organizations:ListAWSServiceAccessForOrganization
+                - organizations:EnableAWSServiceAccess
+                - organizations:DisableAWSServiceAccess
+              Resource: "*" # Only * supported
+            - Effect: Allow
+              Action:
+                - iam:GetRole
+                # - iam:PassRole
+                - iam:CreateServiceLinkedRole
+              Resource:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/stacksets.cloudformation.amazonaws.com/"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/stacksets.cloudformation.amazonaws.com/*"
+            - Effect: Allow
+              Action:
+                - cloudformation:DescribeOrganizationsAccess
+                - cloudformation:ActivateOrganizationsAccess
+                - cloudformation:DeactivateOrganizationsAccess
+              Resource: "*" # Only * supported
+      Tags:
+        application: cloudformation-custom-resources
+        environment: !Ref environment
+
+  # Force lambda logs to be retained only 1 week
+  CloudformationOrganizationsAccessFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [CloudformationOrganizationsAccessFunction]
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CloudformationOrganizationsAccessFunction}"
+      RetentionInDays: 7
+      Tags:
+        - Key: application
+          Value: cloudformation-custom-resources
+        - Key: environment
+          Value: !Ref environment
+
+  OrganizationsAwsServiceAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "organizations-aws-service-access-${environment}"
+      Description: Enable/disable trusted access for a service
+      Handler: index.handler
+      Runtime: !Ref pythonVersion
+      CodeUri: "./lambda/organizations_aws_service_access/src"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !Ref CustomResourceHelperLayer
+      Architectures:
+        - !Ref architecture
+      MemorySize: 128
+      Timeout: 30
+      Environment:
+        Variables:
+          LOG_LEVEL: !If [IsEnvProd, "WARNING", "INFO"]
+          POWERTOOLS_LOGGER_LOG_EVENT: !If [IsEnvProd, false, true]
+          POWERTOOLS_SERVICE_NAME: organizations_aws_service_access
+          POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+      Policies:
+        - AWSLambdaExecute
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - organizations:ListAWSServiceAccessForOrganization
+                - organizations:EnableAWSServiceAccess
+                - organizations:DisableAWSServiceAccess
+              Resource: "*" # Only * supported
+            - Effect: Allow
+              Action:
+                - iam:GetRole
+                - iam:CreateServiceLinkedRole
+              Resource:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*.amazonaws.com/"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*.amazonaws.com/*"
+      Tags:
+        application: cloudformation-custom-resources
+        environment: !Ref environment
+
+  # Force lambda logs to be retained only 1 week
+  OrganizationsAwsServiceAccessFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [OrganizationsAwsServiceAccessFunction]
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${OrganizationsAwsServiceAccessFunction}"
+      RetentionInDays: 7
+      Tags:
+        - Key: application
+          Value: cloudformation-custom-resources
+        - Key: environment
+          Value: !Ref environment
+
+Outputs:
+  CloudformationOrganizationsAccessFunctionArn:
+    Description: "ARN for the CloudformationOrganizationsAccessFunction custom resource function"
+    Value: !GetAtt CloudformationOrganizationsAccessFunction.Arn
+  OrganizationsAwsServiceAccessFunctionArn:
+    Description: "ARN for the OrganizationsAwsServiceAccessFunction custom resource function"
+    Value: !GetAtt OrganizationsAwsServiceAccessFunction.Arn

@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Organization logging
+
+Parameters:
+  environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  managementAccountId:
+    Type: String
+    Description: Organizations management account ID
+  organizationId:
+    Type: String
+    Description: Organization ID
+  organizationsAwsServiceAccessFunctionArn:
+    Type: String
+    Description: AWS Service Access custom resource Lambda function ARN
+  enabled:
+    Type: String
+    Description: Enable logging
+    Default: true
+    AllowedValues: [true, false]
+  logsRetentionDays:
+    Type: Number
+    Description: Keep logs in logging bucket for x days
+    Default: 30
+
+Resources:
+  EnableCloudTrailOrganizationsAccessCustomResource:
+    Type: Custom::EnableCloudTrailOrganizationsAccess
+    Properties:
+      ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
+      ServiceTimeout: 30
+      service: "cloudtrail.amazonaws.com"
+
+  # Credits to https://github.com/getcft/aws-cloudtrail-cf-template/blob/master/cloudtrail-cf-template.yml
+  CloudTrailS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: !Ref logsRetentionDays
+            Status: Enabled
+      Tags:
+        - Key: application
+          Value: logging
+        - Key: environment
+          Value: !Ref environment
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailS3Bucket
+      PolicyDocument:
+        # See https://docs.aws.amazon.com/awscloudtrail/latest/userguide/create-s3-bucket-policy-for-cloudtrail.html#org-trail-bucket-policy
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: s3:GetBucketAcl
+            Resource: !Sub "arn:aws:s3:::${CloudTrailS3Bucket}"
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${CloudTrailS3Bucket}/AWSLogs/${managementAccountId}/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "bucket-owner-full-control"
+          - Sid: AWSCloudTrailOrganizationWrite
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${CloudTrailS3Bucket}/AWSLogs/${organizationId}/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "bucket-owner-full-control"
+
+  # Enable CloudTrail
+  LogAllCloudTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn:
+      - EnableCloudTrailOrganizationsAccessCustomResource
+      - CloudTrailS3Bucket
+      - CloudTrailBucketPolicy
+    Properties:
+      TrailName: !Sub "LogAll-${environment}"
+      S3BucketName: !Ref CloudTrailS3Bucket
+      IsOrganizationTrail: true
+      IsLogging: !Ref enabled
+      EnableLogFileValidation: true
+      EventSelectors: []
+      Tags:
+        - Key: application
+          Value: logging
+        - Key: environment
+          Value: !Ref environment
+
+Outputs:
+  CloudTrailS3Bucket:
+    Description: Encrypted S3 Bucket for CloudTrail Logs
+    Value: !Ref CloudTrailS3Bucket
+  CloudTrail:
+    Description: CloudTrail logging all events
+    Value: !Ref LogAllCloudTrail

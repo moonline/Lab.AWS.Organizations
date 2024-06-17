@@ -1,0 +1,10 @@
+{
+    "default": {
+        "organizationEmail": "aws@test.domain.tld",
+        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-1234abcd1234abcd"
+    },
+    "prod": {
+        "organizationEmail": "aws@domain.tld",
+        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-5678efgh5678efgh"
+    }
+}
