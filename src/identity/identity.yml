@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Identity Center with permission sets
+
+Parameters:
+  environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  # https://dev.to/hayao_k/how-to-manage-aws-sso-account-assignments-in-cloudformaton-5bmm
+  identityCenterInstanceArn:
+    Type: String
+    # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-sso-permissionset.html#cfn-sso-permissionset-instancearn
+    AllowedPattern: arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}
+    Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
+  organizationRootId:
+    Type: String
+    # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-organizations-organizationalunit.html#cfn-organizations-organizationalunit-parentid
+    AllowedPattern: ^(r-[0-9a-z]{4,32})|(ou-[0-9a-z]{4,32}-[a-z0-9]{8,32})$
+    Description: Root ID of the organization
+  supportedRegions:
+    Type: String
+    Description: Comma separated list of supported regions
+  organizationsAwsServiceAccessFunctionArn:
+    Type: String
+    Description: AWS Service Access custom resource Lambda function ARN
+
+Resources:
+  EnableCloudformationStackSetsOrganizationsAccessCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
+      ServiceTimeout: 30
+      service: "member.org.stacksets.cloudformation.amazonaws.com"
+
+  # Policies
+  # OrganizationPoliciesStackSet:
+  #   Type: AWS::CloudFormation::StackSet
+  #   Properties:
+  #     StackSetName: !Sub "OrganizationPolicies-${environment}"
+  #     Description: Managed organization policies for each account
+  #     TemplateURL: ./managed-policies.yml
+  #     AutoDeployment:
+  #       Enabled: true
+  #       RetainStacksOnAccountRemoval: false
+  #     CallAs: SELF
+  #     Capabilities:
+  #       - CAPABILITY_NAMED_IAM
+  #     Parameters:
+  #       - ParameterKey: environment
+  #         ParameterValue: !Ref environment
+  #     PermissionModel: SERVICE_MANAGED
+  #     StackInstancesGroup:
+  #       - DeploymentTargets:
+  #           OrganizationalUnitIds:
+  #             - !Ref organizationRootId
+  #         Regions: !Split [",", !Ref supportedRegions]
+  #     Tags:
+  #       - Key: environment
+  #         Value: !Ref environment
+
+  # Permission sets
+  AdministratorPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: Administrator
+      Description: Administrator, allowed to do everything
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            Location: ./manage-own-mfa-device-policy-v1.json
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+  PowerUserPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: PowerUser
+      Description: Power user based on AWS PowerUser policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            Location: ./manage-own-mfa-device-policy-v1.json
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+  ReadOnlyPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: ReadOnly
+      Description: Read only access based on AWS ReadOnlyAccess policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            Location: ./manage-own-mfa-device-policy-v1.json
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+Outputs:
+  PermissionSets:
+    Description: Identity center permission sets
+    Value: !Sub
+      - |
+        Administrator: "${AdministratorPermissionSetArn}"
+        PowerUser: "${PowerUserPermissionSetArn}"
+        ReadOnly: "${ReadOnlyPermissionSetArn}"
+      - AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+        PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
+        ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn

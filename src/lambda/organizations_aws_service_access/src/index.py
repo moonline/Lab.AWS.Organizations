@@ -3,6 +3,8 @@ from crhelper import CfnResource
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from helpers import is_service_enabled
+
 
 logger = Logger()
 organizations_client = boto3.client('organizations')
@@ -39,53 +41,76 @@ def handler(event: dict, context: LambdaContext) -> dict:
 
 @cfn_helper.create
 def create(event, context):
-    activate_response = organizations_client.enable_aws_service_access(
-        ServicePrincipal=event['ResourceProperties']['service']
-    )
     '''
-    Example response:
-        {
-            "ResponseMetadata": {
-                "RequestId": "e17f83d3-cc95-4e98-9f9b-feefb9ba9690",
-                "HTTPStatusCode": 200,
-                "HTTPHeaders": {
-                    "x-amzn-requestid": "e17f83d3-cc95-4e98-9f9b-feefb9ba9690",
-                    "content-type": "application/x-amz-json-1.1",
-                    "content-length": "0",
-                    "date": "Mon, 17 Jun 2024 07:56:28 GMT"
-                },
-                "RetryAttempts": 0
+    Enable AWS service access.
+    See AWS service principals: https://gist.github.com/shortjared/4c1e3fe52bdfa47522cfe5b41e5d6f22
+    '''
+    service = event['ResourceProperties']['service']
+
+    if not is_service_enabled(organizations_client, service):
+        '''
+        Example response:
+            {
+                "ResponseMetadata": {
+                    "RequestId": "e17f83d3-cc95-4e98-9f9b-feefb9ba9690",
+                    "HTTPStatusCode": 200,
+                    "HTTPHeaders": {
+                        "x-amzn-requestid": "e17f83d3-cc95-4e98-9f9b-feefb9ba9690",
+                        "content-type": "application/x-amz-json-1.1",
+                        "content-length": "0",
+                        "date": "Mon, 17 Jun 2024 07:56:28 GMT"
+                    },
+                    "RetryAttempts": 0
+                }
             }
-        }
-    '''
-    logger.info(
-        'activate_response',
-        extra={'activate_response': activate_response}
-    )
+        '''
+        activate_response = organizations_client.enable_aws_service_access(
+            ServicePrincipal=service
+        )
+        logger.info(
+            'activate_response',
+            extra={'activate_response': activate_response}
+        )
+    else:
+        logger.info(f'service access for "{service}" already enabled')
 
     # Items stored in cfn_helper.Data will be saved as outputs in the resource in CloudFormation
     cfn_helper.Data.update({
-        'RequestId': activate_response.get('ResponseMetadata').get('RequestId'),
-        'Service': event['ResourceProperties']['service']
+        'Service': service
     })
+
+    return f'aws_service_access-{service}'
 
 
 @cfn_helper.update
 def update(event, context):
-    # Service change not supported
-    pass
+    # TODO Service change not yet implemented
+
+    service = event['ResourceProperties']['service']
+    return f'aws_service_access-{service}'
 
 
 @cfn_helper.delete
 def delete(event, context):
-    deactivate_response = organizations_client.disable_aws_service_access(
-        ServicePrincipal=event['ResourceProperties']['service']
-    )
-    logger.info(
-        'deactivate_response',
-        extra={'deactivate_response': deactivate_response}
-    )
+    '''
+    Disable AWS service access.
+    See AWS service principals: https://gist.github.com/shortjared/4c1e3fe52bdfa47522cfe5b41e5d6f22
+    '''
+    service = event['ResourceProperties']['service']
+
+    if is_service_enabled(organizations_client, service):
+        deactivate_response = organizations_client.disable_aws_service_access(
+            ServicePrincipal=service
+        )
+        logger.info(
+            'deactivate_response',
+            extra={'deactivate_response': deactivate_response}
+        )
+    else:
+        logger.info(f'service access for "{service}" already disabled')
+
     cfn_helper.Data.update({
-        'RequestId': deactivate_response.get('ResponseMetadata').get('RequestId'),
-        'Service': event['ResourceProperties']['service']
+        'Service': service
     })
+
+    return f'aws_service_access-{service}'

@@ -23,11 +23,33 @@ Parameters:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
     Description: An email address like 'aws@your-domain.tld'
+  supportedRegions:
+    Type: String
+    Description: >
+      Comma separated list of supported regions.
+      See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html.
+      Examples:
+      - us-east-1 # US East (N. Virginia)
+      - sa-east-1 # South America (São Paulo)
+      - eu-central-1 # Europe (Frankfurt)
+      - eu-central-2 # Europe (Zurich)
+    Default: "us-east-1,sa-east-1,eu-central-1,eu-central-2"
 
 Conditions:
   HasIdentityCenterInstance: !Not [!Equals [!Ref identityCenterInstanceArn, ""]]
 
 Resources:
+  CustomResourcesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./custom-resources.yml"
+      TimeoutInMinutes: 60
+
   OrganizationStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -40,9 +62,22 @@ Resources:
       TemplateURL: "./organization.yml"
       TimeoutInMinutes: 60
 
+  LoggingStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        managementAccountId: !GetAtt OrganizationStack.Outputs.ManagementAccountId
+        organizationId: !GetAtt OrganizationStack.Outputs.OrganizationId
+        organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: "./logging.yml"
+      TimeoutInMinutes: 60
+
   IdentityStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: OrganizationStack
     Condition: HasIdentityCenterInstance
     Properties:
       Parameters:
@@ -53,10 +88,13 @@ Resources:
             !Ref identityCenterInstanceArn,
             !Ref "AWS::NoValue",
           ]
+        organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
+        supportedRegions: !Ref supportedRegions
+        organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
       Tags:
         - Key: environment
           Value: !Ref environment
-      TemplateURL: "./identity.yml"
+      TemplateURL: "./identity/identity.yml"
       TimeoutInMinutes: 60
 
   PolicyStack:
@@ -65,6 +103,7 @@ Resources:
       Parameters:
         environment: !Ref environment
         organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
+        supportedRegions: !Ref supportedRegions
       Tags:
         - Key: environment
           Value: !Ref environment

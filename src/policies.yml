@@ -18,6 +18,9 @@ Parameters:
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-organizations-organizationalunit.html#cfn-organizations-organizationalunit-parentid
     AllowedPattern: ^(r-[0-9a-z]{4,32})|(ou-[0-9a-z]{4,32}-[a-z0-9]{8,32})$
     Description: Root ID of the organization
+  supportedRegions:
+    Type: String
+    Description: Comma separated list of supported regions
 
 Resources:
   # https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_examples_general.html#example-scp-deny-region
@@ -81,11 +84,7 @@ Resources:
               # Enabled regions
               # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html
               StringNotEquals:
-                aws:RequestedRegion:
-                  - us-east-1 # US East (N. Virginia)
-                  - sa-east-1 # South America (São Paulo)
-                  - eu-central-1 # Europe (Frankfurt)
-                  - eu-central-2 # Europe (Zurich)
+                aws:RequestedRegion: !Split [",", !Ref supportedRegions]
               # Superuser allowed to bypass region block
               # ArnNotLike:
               #   aws:PrincipalARN:

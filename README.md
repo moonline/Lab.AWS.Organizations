@@ -2,6 +2,9 @@
 
 A basic setup of an AWS Organization with AWS SAM
 
+## Custom Resources for Cloudformation
+
+* Organizations access: [organizations_aws_service_access](src/lambda/organizations_aws_service_access/README.md)
 
 
 ## Architecture
