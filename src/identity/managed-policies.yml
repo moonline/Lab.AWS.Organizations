@@ -24,12 +24,16 @@ Parameters:
 
 Resources:
   ManageOwnMfaDevicePolicy:
+    # This policy is for IAM users only. Do not use it for Identity Center users,
+    # because "aws:MultiFactorAuthPresent" is not true for these users
+    # and it would block all access for them
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: !Sub "ManageOwnMfaDevice-${AWS::Region}-${environment}-${policyNamePostfix}"
       Description: Manage own FMA device
       Path: !Ref policyPath
       PolicyDocument:
+        # See https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_aws_my-sec-creds-self-manage-mfa-only.html
         Version: 2012-10-17
         Statement:
           - Sid: AllowViewAccountInfo
@@ -64,9 +68,28 @@ Resources:
             Resource: "*"
             Condition:
               BoolIfExists:
-                aws:MultiFactorAuthPresent: false
+                "aws:MultiFactorAuthPresent": false
+
+  DenyIamUserCreationPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "DenyIamUserCreation-${AWS::Region}-${environment}-${policyNamePostfix}"
+      Description: Do not allow to create IAM users or access keys
+      Path: !Ref policyPath
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: DenyIamUserCreation
+            Effect: Deny
+            Action:
+              - iam:CreateUser
+              - iam:CreateAccessKey
+            Resource: "*"
 
 Outputs:
   ManageOwnMfaDevicePolicyName:
     Description: ManageOwnMfaDevicePolicy name
     Value: !Select [2, !Split ["/", !Ref ManageOwnMfaDevicePolicy]]
+  DenyIamUserCreationName:
+    Description: DenyIamUserCreationPolicy name
+    Value: !Select [2, !Split ["/", !Ref DenyIamUserCreationPolicy]]

@@ -90,7 +90,7 @@ sam build
 ### SAM deploy
 
 1. Copy `organization.tmpl.yml` to `organization.yml` and define organizational units and accounts.
-2. Deploy organization without SSO (ommit parameter `identityCenterInstanceArn`!):
+2. Deploy organization without SSO (omit parameter `identityCenterInstanceArn`!):
     ```sh
     sam deploy --config-env prod --parameter-overrides "organizationEmail=aws@your-domain.tld"
     ```

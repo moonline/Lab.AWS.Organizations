@@ -42,21 +42,22 @@ Parameters:
     Default: "/org/"
 
 Resources:
-  # TODO
-  # EnableSsoOrganizationsAccess:
-  #   Type: Custom::OrganizationsServiceAccess
-  #   Properties:
-  #     ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
-  #     ServiceTimeout: 30
-  #     service: "sso.amazonaws.com"
+  EnableSsoOrganizationsAccess:
+    Type: Custom::OrganizationsServiceAccess
+    Properties:
+      ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
+      ServiceTimeout: 30
+      service: "sso.amazonaws.com"
 
-  # Enabling trusted access for StackSets only works through Cloudformation API
+  # Enabling trusted access for StackSets ONLY works through Cloudformation API
   # CloudFormation does not support service-linked roles
   # See:
   #   https://docs.aws.amazon.com/organizations/latest/userguide/services-that-can-integrate-cloudformation.html
   #   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_aws-services-that-work-with-iam.html
   EnableCloudFormationOrganizationsAccess:
     Type: Custom::CloudFormationOrganizationsAccess
+    DependsOn:
+      - EnableSsoOrganizationsAccess
     Properties:
       ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
       ServiceTimeout: 30
@@ -122,9 +123,6 @@ Resources:
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
-      CustomerManagedPolicyReferences:
-        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
-          Path: !Ref policyPath
       Tags:
         - Key: environment
           Value: !Ref environment
@@ -141,7 +139,7 @@ Resources:
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
       CustomerManagedPolicyReferences:
-        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
+        - Name: !GetAtt OrganizationPoliciesStack.Outputs.DenyIamUserCreationName
           Path: !Ref policyPath
       InlinePolicy:
         "Fn::Transform":
@@ -163,9 +161,6 @@ Resources:
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
-      CustomerManagedPolicyReferences:
-        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
-          Path: !Ref policyPath
       Tags:
         - Key: environment
           Value: !Ref environment

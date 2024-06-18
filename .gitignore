@@ -2,3 +2,6 @@
 .aws-sam
 *.private.yml
 samparameters.json
+
+# project management
+todo.txt
