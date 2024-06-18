@@ -15,13 +15,20 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  policyPath:
+    Type: String
+    Description: Organization policy path
+  policyNamePostfix:
+    Type: String
+    Description: Postfix to make policy names unique
 
 Resources:
   ManageOwnMfaDevicePolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: !Sub "ManageOwnMfaDevice-${AWS::Region}-${environment}"
-      Path: "/org/"
+      ManagedPolicyName: !Sub "ManageOwnMfaDevice-${AWS::Region}-${environment}-${policyNamePostfix}"
+      Description: Manage own FMA device
+      Path: !Ref policyPath
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -60,9 +67,6 @@ Resources:
                 aws:MultiFactorAuthPresent: false
 
 Outputs:
-  Policies:
-    Description: Organization policies
-    Value: !Sub
-      - |
-        ManageOwnMfaDevicePolicy: "${ManageOwnMfaDevicePolicyArn}"
-      - ManageOwnMfaDevicePolicyArn: !Ref ManageOwnMfaDevicePolicy
+  ManageOwnMfaDevicePolicyName:
+    Description: ManageOwnMfaDevicePolicy name
+    Value: !Select [2, !Split ["/", !Ref ManageOwnMfaDevicePolicy]]

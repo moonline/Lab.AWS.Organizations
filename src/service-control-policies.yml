@@ -28,7 +28,7 @@ Resources:
     Type: AWS::Organizations::Policy
     Properties:
       Type: SERVICE_CONTROL_POLICY
-      Name: !Sub "SCPDenyNotSupportedRegions-${environment}"
+      Name: !Sub "SCP-DenyNotSupportedRegions-${environment}"
       TargetIds:
         - !Ref organizationRootId
       Content:

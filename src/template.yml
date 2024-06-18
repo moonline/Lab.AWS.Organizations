@@ -22,18 +22,22 @@ Parameters:
   organizationEmail:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
-    Description: An email address like 'aws@your-domain.tld'
+    Description: >
+      An email address like 'aws@your-domain.tld'.
+      Each account will get a labeled address like 'aws+the-account-name@your-domain.tld'.
   supportedRegions:
     Type: String
     Description: >
-      Comma separated list of supported regions.
+      Comma separated list of supported regions. The first is the main region.
       See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html.
       Examples:
       - us-east-1 # US East (N. Virginia)
       - sa-east-1 # South America (São Paulo)
       - eu-central-1 # Europe (Frankfurt)
       - eu-central-2 # Europe (Zurich)
-    Default: "us-east-1,sa-east-1,eu-central-1,eu-central-2"
+      - ap-southeast-1 # Asia Pacific (Singapore)
+      These regions must be enabled in the account: https://us-east-1.console.aws.amazon.com/billing/home?region=eu-central-1#/account?AWS-Regions
+    Default: "us-east-1,eu-central-1"
 
 Conditions:
   HasIdentityCenterInstance: !Not [!Equals [!Ref identityCenterInstanceArn, ""]]
@@ -99,7 +103,7 @@ Resources:
       TemplateURL: "./identity/identity.yml"
       TimeoutInMinutes: 60
 
-  PolicyStack:
+  ServiceControlPoliciesStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -109,7 +113,7 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
-      TemplateURL: "./policies.yml"
+      TemplateURL: "./service-control-policies.yml"
       TimeoutInMinutes: 60
 
 Outputs:

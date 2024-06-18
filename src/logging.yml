@@ -32,8 +32,8 @@ Parameters:
     Default: 30
 
 Resources:
-  EnableCloudTrailOrganizationsAccessCustomResource:
-    Type: AWS::CloudFormation::CustomResource
+  EnableCloudTrailOrganizationsServiceAccess:
+    Type: Custom::OrganizationsServiceAccess
     Properties:
       ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
       ServiceTimeout: 30
@@ -96,7 +96,7 @@ Resources:
   LogAllCloudTrail:
     Type: AWS::CloudTrail::Trail
     DependsOn:
-      - EnableCloudTrailOrganizationsAccessCustomResource
+      - EnableCloudTrailOrganizationsServiceAccess
       - CloudTrailS3Bucket
       - CloudTrailBucketPolicy
     Properties:

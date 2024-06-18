@@ -14,7 +14,7 @@ See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-
 ### YAML
 
 ```yaml
-Type: AWS::CloudFormation::CustomResource # or Custom::MyCustomResourceTypeName
+Type: Custom::CloudFormationOrganizationsAccess # or AWS::CloudFormation::CustomResource
 Properties:
   ServiceTimeout: String
   ServiceToken: String
@@ -45,8 +45,8 @@ When you pass the logical ID of this resource to the intrinsic `Ref` function, `
 # ...
 
 Resources:
-  EnableCloudformationOrganizationsAccessCustomResource:
-    Type: AWS::CloudFormation::CustomResource
+  EnableCloudFormationOrganizationsAccess:
+    Type: Custom::CloudFormationOrganizationsAccess
     Properties:
       ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
       ServiceTimeout: 30

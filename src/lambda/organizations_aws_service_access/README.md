@@ -14,7 +14,7 @@ See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-
 ### YAML
 
 ```yaml
-Type: AWS::CloudFormation::CustomResource # or Custom::MyCustomResourceTypeName
+Type: Custom::OrganizationsServiceAccess # or AWS::CloudFormation::CustomResource
 Properties:
   ServiceTimeout: String
   ServiceToken: String
@@ -66,8 +66,8 @@ The service principal of the enabled service.
 # ...
 
 Resources:
-  EnableCloudTrailOrganizationsAccessCustomResource:
-    Type: AWS::CloudFormation::CustomResource
+  EnableCloudTrailOrganizationsServiceAccess:
+    Type: Custom::OrganizationsServiceAccess
     Properties:
       ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
       ServiceTimeout: 10

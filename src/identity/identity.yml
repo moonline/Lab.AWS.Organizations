@@ -32,98 +32,140 @@ Parameters:
   cloudformationOrganizationsAccessFunctionArn:
     Type: String
     Description: Cloudformation organizations access custom resource Lambda function ARN
+  policyNamePostfix:
+    Type: String
+    Description: Postfix to make policy names unique
+    Default: G6U4SR
+  policyPath:
+    Type: String
+    Description: Organization policy path
+    Default: "/org/"
 
 Resources:
-  # EnableCloudformationStackSetsOrganizationsAccessCustomResource:
-  #   Type: AWS::CloudFormation::CustomResource
+  # TODO
+  # EnableSsoOrganizationsAccess:
+  #   Type: Custom::OrganizationsServiceAccess
   #   Properties:
   #     ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
   #     ServiceTimeout: 30
-  #     service: "member.org.stacksets.cloudformation.amazonaws.com"
+  #     service: "sso.amazonaws.com"
 
-  # EnableCloudformationOrganizationsAccessCustomResource:
-  #   Type: AWS::CloudFormation::CustomResource
-  #   Properties:
-  #     ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
-  #     ServiceTimeout: 30
+  # Enabling trusted access for StackSets only works through Cloudformation API
+  # CloudFormation does not support service-linked roles
+  # See:
+  #   https://docs.aws.amazon.com/organizations/latest/userguide/services-that-can-integrate-cloudformation.html
+  #   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_aws-services-that-work-with-iam.html
+  EnableCloudFormationOrganizationsAccess:
+    Type: Custom::CloudFormationOrganizationsAccess
+    Properties:
+      ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
+      ServiceTimeout: 30
 
   # Policies
-  # OrganizationPoliciesStackSet:
-  #   Type: AWS::CloudFormation::StackSet
-  #   DependsOn:
-  #   #  - EnableCloudformationStackSetsOrganizationsAccessCustomResource
-  #     - EnableCloudformationOrganizationsAccessCustomResource
-  #   Properties:
-  #     StackSetName: !Sub "OrganizationPolicies-${environment}"
-  #     Description: Managed organization policies for each account
-  #     TemplateURL: ./managed-policies.yml
-  #     AutoDeployment:
-  #       Enabled: true
-  #       RetainStacksOnAccountRemoval: false
-  #     CallAs: SELF
-  #     Capabilities:
-  #       - CAPABILITY_NAMED_IAM
-  #     Parameters:
-  #       - ParameterKey: environment
-  #         ParameterValue: !Ref environment
-  #     PermissionModel: SERVICE_MANAGED
-  #     StackInstancesGroup:
-  #       - DeploymentTargets:
-  #           OrganizationalUnitIds:
-  #             - !Ref organizationRootId
-  #         Regions: !Split [",", !Ref supportedRegions]
-  #     Tags:
-  #       - Key: environment
-  #         Value: !Ref environment
+  OrganizationPoliciesStack:
+    # Organization policies for management account.
+    # When using SERVICE_MANAGED StackSets, StackSets are not deployed automatically to the management account.
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        policyNamePostfix: !Ref policyNamePostfix
+        policyPath: !Ref policyPath
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+      TemplateURL: ./managed-policies.yml
+      TimeoutInMinutes: 10
+
+  OrganizationPoliciesStackSet:
+    Type: AWS::CloudFormation::StackSet
+    DependsOn:
+      - EnableCloudFormationOrganizationsAccess
+    Properties:
+      StackSetName: !Sub "OrganizationPolicies-${environment}"
+      Description: Managed organization policies for each account
+      TemplateURL: ./managed-policies.yml
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: false
+      CallAs: SELF
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
+      Parameters:
+        - ParameterKey: environment
+          ParameterValue: !Ref environment
+        - ParameterKey: policyNamePostfix
+          ParameterValue: !Ref policyNamePostfix
+        - ParameterKey: policyPath
+          ParameterValue: !Ref policyPath
+      PermissionModel: SERVICE_MANAGED
+      StackInstancesGroup:
+        - DeploymentTargets:
+            OrganizationalUnitIds:
+              - !Ref organizationRootId
+          Regions:
+            # Deploy to main region only
+            - !Ref AWS::Region
+      Tags:
+        - Key: environment
+          Value: !Ref environment
 
   # Permission sets
   AdministratorPermissionSet:
     Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
     Properties:
       Name: Administrator
       Description: Administrator, allowed to do everything
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
-      InlinePolicy:
-        "Fn::Transform":
-          Name: "AWS::Include"
-          Parameters:
-            Location: ./manage-own-mfa-device-policy-v1.json
+      CustomerManagedPolicyReferences:
+        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
+          Path: !Ref policyPath
       Tags:
         - Key: environment
           Value: !Ref environment
 
   PowerUserPermissionSet:
     Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
     Properties:
       Name: PowerUser
       Description: Power user based on AWS PowerUser policy
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+      CustomerManagedPolicyReferences:
+        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
+          Path: !Ref policyPath
       InlinePolicy:
         "Fn::Transform":
           Name: "AWS::Include"
           Parameters:
-            Location: ./manage-own-mfa-device-policy-v1.json
+            Location: ./poweruser-policy-v1.json
       Tags:
         - Key: environment
           Value: !Ref environment
 
   ReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
     Properties:
       Name: ReadOnly
       Description: Read only access based on AWS ReadOnlyAccess policy
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
-      InlinePolicy:
-        "Fn::Transform":
-          Name: "AWS::Include"
-          Parameters:
-            Location: ./manage-own-mfa-device-policy-v1.json
+      CustomerManagedPolicyReferences:
+        - Name: !GetAtt OrganizationPoliciesStack.Outputs.ManageOwnMfaDevicePolicyName
+          Path: !Ref policyPath
       Tags:
         - Key: environment
           Value: !Ref environment

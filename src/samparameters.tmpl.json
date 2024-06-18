@@ -5,6 +5,7 @@
     },
     "prod": {
         "organizationEmail": "aws@domain.tld",
-        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-5678efgh5678efgh"
+        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-5678efgh5678efgh",
+        "supportedRegions": "us-east-1,eu-central-1"
     }
 }

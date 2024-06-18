@@ -31,14 +31,28 @@ flowchart TB
 title: Organization deployment
 ---
 flowchart TB
-    organization(Deploy AWS Organization)
-        organization --- enableCloudTrail[Enable CloudTrail organization access]
-            enableCloudTrail --> cloudTrailBucket(Deploy CloudTrail logs bucket & policy)
-                cloudTrailBucket --> cloudTrail(Deploy CloudTrail trail)
+    org{fa:fa-rocket}
+    customResources(fa:fa-cubes\nDeploy custom resources)
+        customResources -.- organizationServiceAccess[fa:fa-code\nOrganization service access\nfunction]
+        customResources -.- cloudFormationOrganizationAccess[Cloudformation organization\naccess function]
+        customResources --> org
 
-        organization --- enableSSO[Enable SSO organization access]
-            enableSSO --> enableCloudformation[Enable Cloudformation organization access]
-                enableCloudformation --> permissionSets(Deploy PermissionSets)
+    organization(fa:fa-sitemap\nDeploy AWS Organization)
+        organization --> org
+        organization -.- accounts
+        organization -.- units
+
+        org --- enableSCPs{{Enable Service Control Policies}}
+            enableSCPs --> scps(fa:fa-shield-halved\nDeploy Service Control Policies)
+
+        org --- enableCloudTrail{{Enable CloudTrail organization access}}
+            enableCloudTrail --> cloudTrailBucket(fa:fa-bucket\nDeploy CloudTrail logs bucket & policy)
+                cloudTrailBucket --> cloudTrail(fa:fa-table-list\nDeploy CloudTrail trail)
+
+        org --- enableSSO{{Enable SSO organization access}}
+            enableSSO --> enableCloudformation{{Enable Cloudformation organization access}}
+                enableCloudformation --> managedPolicies(fa:fa-certificate\nDeploy managed policies Stackset)
+                    managedPolicies --> permissionSets(fa:fa-key\nDeploy PermissionSets)
 ```
 
 
