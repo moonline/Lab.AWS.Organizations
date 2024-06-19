@@ -1,4 +1,4 @@
-# AWS Organizations service access custom resource
+# AWS Organizations - Service Access Custom Resource Function
 
 List existing access:
 
@@ -15,6 +15,7 @@ See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-
 
 ```yaml
 Type: Custom::OrganizationsServiceAccess # or AWS::CloudFormation::CustomResource
+DependsOn: Organization
 Properties:
   ServiceTimeout: String
   ServiceToken: String
@@ -68,6 +69,7 @@ The service principal of the enabled service.
 Resources:
   EnableCloudTrailOrganizationsServiceAccess:
     Type: Custom::OrganizationsServiceAccess
+    DependsOn: Organization
     Properties:
       ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
       ServiceTimeout: 10

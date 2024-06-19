@@ -110,6 +110,7 @@ Resources:
         environment: !Ref environment
         organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
         supportedRegions: !Ref supportedRegions
+        organizationsPolicyTypeFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsPolicyTypeFunctionArn
       Tags:
         - Key: environment
           Value: !Ref environment

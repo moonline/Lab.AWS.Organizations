@@ -36,6 +36,23 @@ Conditions:
     - !Ref environment
     - futureprod # TODO "prod"
 
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 128
+    Runtime: !Ref pythonVersion
+    Architectures:
+      - !Ref architecture
+    Environment:
+      Variables:
+        LOG_LEVEL: !If [IsEnvProd, "WARNING", "INFO"]
+        POWERTOOLS_LOGGER_LOG_EVENT: !If [IsEnvProd, false, true]
+        POWERTOOLS_METRICS_NAMESPACE: cloudformation-custom-resources
+        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+    Tags:
+      application: cloudformation-custom-resources
+      environment: !Ref environment
+
 Resources:
   # https://www.alexdebrie.com/posts/cloudformation-custom-resources/
   CustomResourceHelperLayer:
@@ -52,6 +69,9 @@ Resources:
     Metadata:
       BuildMethod: !Ref pythonVersion
 
+  ##
+  # CloudformationOrganizationsAccess
+  ##
   CloudformationOrganizationsAccessLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -71,22 +91,14 @@ Resources:
       FunctionName: !Sub "cloudformation-organizations-access-${environment}"
       Description: Enable/disable trusted access for cloudformation
       Handler: index.handler
-      Runtime: !Ref pythonVersion
       CodeUri: "./lambda/cloudformation_organizations_access/src"
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
         - !Ref CloudformationOrganizationsAccessLayer
-      Architectures:
-        - !Ref architecture
-      MemorySize: 128
-      Timeout: 30
       Environment:
         Variables:
-          LOG_LEVEL: !If [IsEnvProd, "WARNING", "INFO"]
-          POWERTOOLS_LOGGER_LOG_EVENT: !If [IsEnvProd, false, true]
           POWERTOOLS_SERVICE_NAME: cloudformation_organizations_access
-          POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
       Policies:
         - AWSLambdaExecute
         - Version: "2012-10-17"
@@ -120,10 +132,6 @@ Resources:
                 - cloudformation:DeactivateOrganizationsAccess
               Resource: "*" # Only * supported
 
-      Tags:
-        application: cloudformation-custom-resources
-        environment: !Ref environment
-
   # Force lambda logs to be retained only 1 week
   CloudformationOrganizationsAccessFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -137,6 +145,9 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  ##
+  # OrganizationsAwsServiceAccess
+  ##
   OrganizationsAwsServiceAccessLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -156,22 +167,14 @@ Resources:
       FunctionName: !Sub "organizations-aws-service-access-${environment}"
       Description: Enable/disable trusted access for a service
       Handler: index.handler
-      Runtime: !Ref pythonVersion
       CodeUri: "./lambda/organizations_aws_service_access/src"
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
         - !Ref OrganizationsAwsServiceAccessLayer
-      Architectures:
-        - !Ref architecture
-      MemorySize: 128
-      Timeout: 30
       Environment:
         Variables:
-          LOG_LEVEL: !If [IsEnvProd, "WARNING", "INFO"]
-          POWERTOOLS_LOGGER_LOG_EVENT: !If [IsEnvProd, false, true]
           POWERTOOLS_SERVICE_NAME: organizations_aws_service_access
-          POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
       Policies:
         - AWSLambdaExecute
         - Version: "2012-10-17"
@@ -182,6 +185,10 @@ Resources:
                 - organizations:EnableAWSServiceAccess
                 - organizations:DisableAWSServiceAccess
               Resource: "*" # Only * supported
+              Condition:
+                StringEquals:
+                  "aws:PrincipalOrgId":
+                    - !Ref organizationId
             - Effect: Allow
               Action:
                 - iam:GetRole
@@ -189,9 +196,6 @@ Resources:
               Resource:
                 - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*.amazonaws.com/"
                 - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*.amazonaws.com/*"
-      Tags:
-        application: cloudformation-custom-resources
-        environment: !Ref environment
 
   # Force lambda logs to be retained only 1 week
   OrganizationsAwsServiceAccessFunctionLogGroup:
@@ -206,6 +210,71 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  ##
+  # OrganizationsPolicyType
+  ##
+  OrganizationsPolicyTypeLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "organizations-policy-type-dependencies-${environment}"
+      Description: OrganizationsPolicyTypeFunction dependencies
+      ContentUri: "./lambda/organizations_policy_type/dependencies"
+      CompatibleRuntimes:
+        - !Ref pythonVersion
+      CompatibleArchitectures:
+        - !Ref architecture
+    Metadata:
+      BuildMethod: !Ref pythonVersion
+
+  OrganizationsPolicyTypeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "organizations-policy-type-${environment}"
+      Description: Enable/disable an organizations policy type
+      Handler: index.handler
+      CodeUri: "./lambda/organizations_policy_type/src"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !Ref CustomResourceHelperLayer
+        - !Ref OrganizationsPolicyTypeLayer
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: organizations_policy_type
+      Policies:
+        - AWSLambdaExecute
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: AllowDescribeOrganization
+              Effect: Allow
+              Action:
+                - organizations:ListRoots
+                - organizations:DescribeOrganization
+              Resource: "*" # Only * supported
+              Condition:
+                StringEquals:
+                  "aws:PrincipalOrgId":
+                    - !Ref organizationId
+            - Sid: AllowEnableDisablePolicyType
+              Effect: Allow
+              Action:
+                - organizations:EnablePolicyType
+                - organizations:DisablePolicyType
+              Resource:
+                - !Sub "arn:aws:organizations::${AWS::AccountId}:root/o-*/r-*"
+
+  # Force lambda logs to be retained only 1 week
+  OrganizationsPolicyTypeFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [OrganizationsPolicyTypeFunction]
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${OrganizationsPolicyTypeFunction}"
+      RetentionInDays: 7
+      Tags:
+        - Key: application
+          Value: cloudformation-custom-resources
+        - Key: environment
+          Value: !Ref environment
+
 Outputs:
   CloudformationOrganizationsAccessFunctionArn:
     Description: "ARN for the CloudformationOrganizationsAccessFunction custom resource function"
@@ -213,3 +282,6 @@ Outputs:
   OrganizationsAwsServiceAccessFunctionArn:
     Description: "ARN for the OrganizationsAwsServiceAccessFunction custom resource function"
     Value: !GetAtt OrganizationsAwsServiceAccessFunction.Arn
+  OrganizationsPolicyTypeFunctionArn:
+    Description: "ARN for the OrganizationsPolicyTypeFunctionArn custom resource function"
+    Value: !GetAtt OrganizationsPolicyTypeFunction.Arn

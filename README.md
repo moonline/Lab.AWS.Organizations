@@ -1,8 +1,14 @@
 # Lab.AWS.Organizations
 
-A basic setup of an AWS Organization with AWS SAM
+A basic setup of an AWS Organization with AWS SAM.
+
+Key concepts see https://docs.aws.amazon.com/organizations/latest/userguide/orgs_getting-started_concepts.html .
+
 
 ## Custom Resources for Cloudformation
+
+CloudFormation is missing some key resources for managing AWS Organizations.
+These are covered by the following custom resources:
 
 * Organizations access: [organizations_aws_service_access](src/lambda/organizations_aws_service_access/README.md)
 * CloudFormation organizations access: [cloudformation_organizations_access](src/lambda/cloudformation_organizations_access/README.md)
@@ -32,27 +38,31 @@ title: Organization deployment
 ---
 flowchart TB
     org{fa:fa-rocket}
-    customResources(fa:fa-cubes\nDeploy custom resources)
+    customResources[fa:fa-cubes\nCustom resources] 
         customResources -.- organizationServiceAccess[fa:fa-code\nOrganization service access\nfunction]
-        customResources -.- cloudFormationOrganizationAccess[Cloudformation organization\naccess function]
+        customResources -.- organizationPolicyType[fa:fa-code\nOrganization policy\ntype function]
+        customResources -.- cloudFormationOrganizationAccess[fa:fa-code\nCloudformation organization\naccess function]
         customResources --> org
 
-    organization(fa:fa-sitemap\nDeploy AWS Organization)
+    organization[fa:fa-sitemap\nAWS Organization]
         organization --> org
-        organization -.- accounts
-        organization -.- units
+        organization -.- DevelopmentOU
+        DevelopmentOU -.- Project1Dev
+        DevelopmentOU -.- Project1Test
+        organization -.- ProductionOU
+        ProductionOU -.- Project1Prod
 
-        org --- enableSCPs{{Enable Service Control Policies}}
+        org --- enableSCPs{{fa:fa-cube\nEnable Service Control Policies}}
             enableSCPs --> scps(fa:fa-shield-halved\nDeploy Service Control Policies)
 
-        org --- enableCloudTrail{{Enable CloudTrail organization access}}
-            enableCloudTrail --> cloudTrailBucket(fa:fa-bucket\nDeploy CloudTrail logs bucket & policy)
-                cloudTrailBucket --> cloudTrail(fa:fa-table-list\nDeploy CloudTrail trail)
+        org --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail organization access}}
+            enableCloudTrail --> cloudTrailBucket[fa:fa-bucket fa:fa-certificate\nCloudTrail logs bucket & policy]
+                cloudTrailBucket --> cloudTrail[fa:fa-table-list\nCloudTrail trail]
 
-        org --- enableSSO{{Enable SSO organization access}}
-            enableSSO --> enableCloudformation{{Enable Cloudformation organization access}}
-                enableCloudformation --> managedPolicies(fa:fa-certificate\nDeploy managed policies Stackset)
-                    managedPolicies --> permissionSets(fa:fa-key\nDeploy PermissionSets)
+        org --- enableSSO{{fa:fa-cube\nEnable SSO organization access}}
+            enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation StackSets\norganization access}}
+                enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
+                    managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
 ```
 
 

@@ -1,4 +1,4 @@
-# CloudFormation Organizations access custom resource
+# AWS CloudFormation - Organizations Access Custom Resource Function
 
 Describe existing access:
 

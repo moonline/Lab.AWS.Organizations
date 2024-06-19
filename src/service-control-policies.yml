@@ -21,8 +21,18 @@ Parameters:
   supportedRegions:
     Type: String
     Description: Comma separated list of supported regions
+  organizationsPolicyTypeFunctionArn:
+    Type: String
+    Description: AWS Organizations policy type custom resource Lambda function ARN
 
 Resources:
+  EnableTagPolicyOrganizationsPolicyType:
+    Type: Custom::OrganizationsPolicyType
+    Properties:
+      ServiceToken: !Ref organizationsPolicyTypeFunctionArn
+      ServiceTimeout: 30
+      policyType: TAG_POLICY
+
   # https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_examples_general.html#example-scp-deny-region
   EnableSupportedRegionsOnlyPolicy:
     Type: AWS::Organizations::Policy
