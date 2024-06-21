@@ -10,8 +10,9 @@ logger = Logger()
 organizations_client: OrganizationsClient = boto3.client('organizations')
 
 
-ENABLE_DISABLE_POLICY_WAIT_ATTEMPTS: int = 15
-ENABLE_DISABLE_POLICY_WAIT_DELAY_SECONDS: int = 1
+ENABLE_DISABLE_POLICY_WAIT_ATTEMPTS: int = 10
+ENABLE_DISABLE_POLICY_WAIT_DELAY_SECONDS: int = 2
+POLICY_TYPE_STATUS_CHANGE_WAIT_DELAY_SECONDS: int = 5
 
 
 PolicyType = Literal[
@@ -85,25 +86,34 @@ class OrganizationService:
             return roots[0]
         else:
             raise Exception(
-                f'No organizations root found! Ensure AWS Organizations is enabled'
+                'No organizations root found! Ensure AWS Organizations is enabled'
             )
 
     @property
-    def policy_types(self) -> list[dict]:
+    def organization(self) -> list[dict]:
         '''
         :return: Available policy types
-        :rtype: [
-            {
-                'Type': 'SERVICE_CONTROL_POLICY'|'TAG_POLICY'|'BACKUP_POLICY'|'AISERVICES_OPT_OUT_POLICY',
-                'Status': 'ENABLED'|'PENDING_ENABLE'|'PENDING_DISABLE'
-            },
-        ]
+        :rtype: {
+            'Id': 'string',
+            'Arn': 'string',
+            'FeatureSet': 'ALL'|'CONSOLIDATED_BILLING',
+            'MasterAccountArn': 'string',
+            'MasterAccountId': 'string',
+            'MasterAccountEmail': 'string',
+            'AvailablePolicyTypes': [
+                {
+                    'Type': 'SERVICE_CONTROL_POLICY'|'TAG_POLICY'|'BACKUP_POLICY'|'AISERVICES_OPT_OUT_POLICY',
+                    'Status': 'ENABLED'|'PENDING_ENABLE'|'PENDING_DISABLE'
+                },
+            ]
+        }
         '''
         describe_organization_response = self.organizations_client.describe_organization()
         '''
         Response syntax:
         {
             'Organization': {
+                'Id': 'string',
                 ...
                 'AvailablePolicyTypes': [
                     {
@@ -119,14 +129,16 @@ class OrganizationService:
                 f'No organization found! Ensure AWS Organizations is enabled'
             )
 
-        return describe_organization_response \
-            .get('Organization', {}) \
-            .get('AvailablePolicyTypes', [])
+        return describe_organization_response.get('Organization', {})
 
     def get_policy_type_status(self, policy_type: PolicyType) -> PolicyTypeStatus:
+        # root.PolicyTypes and Organization.AvailablePolicyTypes API responses are not consistent.
+        # Use only root.PolicyTypes!
+        available_policy_types = self.root.get('PolicyTypes', [])
+
         status = [
             available_policy_type['Status']
-            for available_policy_type in self.policy_types
+            for available_policy_type in available_policy_types
             if available_policy_type['Type'] == policy_type
         ]
         if len(status) == 0:
@@ -152,15 +164,17 @@ class OrganizationService:
                 return False
             else:
                 logger.info(
-                    f'Policy type pending',
-                    extra={'policy_type': policy_type, 'status': status}
+                    'Policy type pending',
+                    extra={
+                        'policy_type': policy_type,
+                        'status': status
+                    }
                 )
                 attempt = attempt + 1
                 time.sleep(ENABLE_DISABLE_POLICY_WAIT_DELAY_SECONDS)
 
         raise Exception(
-            f'Policy type still pending!',
-            extra={'policy_type': policy_type, 'status': status}
+            f'Policy type "{policy_type}" still pending! Status: "{status}", Expected: "{expected_status}".'
         )
 
     def enable_policy_type(self, policy_type: PolicyType):
@@ -169,6 +183,9 @@ class OrganizationService:
                 RootId=self.root['Id'],
                 PolicyType=policy_type
             )
+            # Policy type changes are not reflected inmediately on the API response.
+            # Wait to ensure it is up to date
+            time.sleep(POLICY_TYPE_STATUS_CHANGE_WAIT_DELAY_SECONDS)
             """
             Response syntax:
             {
@@ -204,6 +221,9 @@ class OrganizationService:
                 RootId=self.root['Id'],
                 PolicyType=policy_type
             )
+            # Policy type changes are not reflected inmediately on the API response.
+            # Wait to ensure it is up to date
+            time.sleep(POLICY_TYPE_STATUS_CHANGE_WAIT_DELAY_SECONDS)
             """
             Response syntax:
             {
@@ -222,7 +242,7 @@ class OrganizationService:
             """
             logger.info(
                 'disable_policy_type_response',
-                extra={'enable_policy_type_response': disable_policy_type_response}
+                extra={'disable_policy_type_response': disable_policy_type_response}
             )
 
             if self.is_policy_type_enabled(policy_type):
@@ -231,4 +251,4 @@ class OrganizationService:
                 )
             logger.info(f'Enabled policy type "{policy_type}".')
         else:
-            logger.info(f'Policy type "{PolicyType}" already disabled')
+            logger.info(f'Policy type "{policy_type}" already disabled')

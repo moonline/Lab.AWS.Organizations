@@ -49,14 +49,46 @@ def create(event, context):
 
 @cfn_helper.update
 def update(event, context):
-    # TODO Service change not yet implemented
-    policy_type = event['ResourceProperties']['policyType']
-    
-    return f'organizations_policy_type-{policy_type.lower()}'
+    '''
+    :param event: Cloudformation custom resource event. Example:
+    {
+        "RequestType": "Update",
+        ...
+        "ResourceProperties": {
+            "ServiceToken": "arn:aws:lambda:eu-central-1:123456789012:function:organizations-policy-type-prod",
+            "policyType": "BACKUP_POLICY",
+            "ServiceTimeout": "30"
+        },
+        "OldResourceProperties": {
+            "ServiceToken": "arn:aws:lambda:eu-central-1:123456789012:function:organizations-policy-type-prod",
+            "policyType": "TAG_POLICY",
+            "ServiceTimeout": "30"
+        }
+    }
+    '''
+    old_policy_type = event['OldResourceProperties']['policyType']
+    new_policy_type = event['ResourceProperties']['policyType']
+
+    organizations_service.disable_policy_type(old_policy_type)
+    organizations_service.enable_policy_type(new_policy_type)
+
+    return f'organizations_policy_type-{new_policy_type.lower()}'
 
 
 @cfn_helper.delete
 def delete(event, context):
+    '''
+    :param event: Cloudformation custom resource event. Example:
+    {
+        "RequestType": "Delete",
+        ...
+        "ResourceProperties": {
+            "ServiceToken": "arn:aws:lambda:eu-central-1:123456789012:function:organizations-policy-type-prod",
+            "policyType": "TAG_POLICY",
+            "ServiceTimeout": "30"
+        }
+    }
+    '''
     policy_type = event['ResourceProperties']['policyType']
 
     organizations_service.disable_policy_type(policy_type)

@@ -31,11 +31,12 @@ Resources:
     Properties:
       ServiceToken: !Ref organizationsPolicyTypeFunctionArn
       ServiceTimeout: 30
-      policyType: TAG_POLICY
+      policyType: SERVICE_CONTROL_POLICY
 
   # https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_examples_general.html#example-scp-deny-region
   EnableSupportedRegionsOnlyPolicy:
     Type: AWS::Organizations::Policy
+    DependsOn: EnableTagPolicyOrganizationsPolicyType
     Properties:
       Type: SERVICE_CONTROL_POLICY
       Name: !Sub "SCP-DenyNotSupportedRegions-${environment}"

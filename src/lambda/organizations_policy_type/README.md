@@ -3,7 +3,7 @@
 List existing policy types:
 
 ```shell
-aws organizations describe-organization  | jq '.Organization.AvailablePolicyTypes'
+aws organizations list-roots  | jq '.Roots[].PolicyTypes'
 ```
 
 ## Syntax
