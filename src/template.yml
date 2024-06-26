@@ -53,7 +53,7 @@ Resources:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./organization.yml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 10
 
   CustomResourcesStack:
     Type: AWS::CloudFormation::Stack
@@ -64,8 +64,8 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
-      TemplateURL: "./custom-resources.yml"
-      TimeoutInMinutes: 60
+      TemplateURL: "./custom-resources/custom-resources.yml"
+      TimeoutInMinutes: 10
 
   LoggingStack:
     Type: AWS::CloudFormation::Stack
@@ -79,7 +79,7 @@ Resources:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./logging.yml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 5
 
   IdentityStack:
     Type: AWS::CloudFormation::Stack
@@ -95,13 +95,15 @@ Resources:
           ]
         organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
         supportedRegions: !Ref supportedRegions
+        securityAccountId: !GetAtt OrganizationStack.Outputs.SecurityAccountId
         organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
         cloudformationOrganizationsAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.CloudformationOrganizationsAccessFunctionArn
+        organizationsDelegatedAdministratorFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsDelegatedAdministratorFunctionArn
       Tags:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./identity/identity.yml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 10
 
   ServiceControlPoliciesStack:
     Type: AWS::CloudFormation::Stack
@@ -115,7 +117,7 @@ Resources:
         - Key: environment
           Value: !Ref environment
       TemplateURL: "./service-control-policies.yml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 10
 
 Outputs:
   ManagementAccountId:

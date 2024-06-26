@@ -1,0 +1,39 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowEditUserAndGroups",
+            "Effect": "Allow",
+            "Action": [
+                "identitystore:UpdateGroup",
+                "identitystore:UpdateUser",
+                "identitystore:DeleteUser",
+                "identitystore:DeleteGroupMembership",
+                "identitystore:CreateGroupMembership",
+                "identitystore:CreateGroup",
+                "identitystore:CreateUser",
+                "identitystore:DeleteGroup"
+            ],
+            "Resource": [
+                "arn:aws:identitystore:::group/*",
+                "arn:aws:identitystore:::user/*",
+                "arn:aws:identitystore:::identitystore/*",
+                "arn:aws:identitystore:::membership/*"
+            ]
+        },
+        {
+            "Sid": "AllowEditAccountAssignment",
+            "Effect": "Allow",
+            "Action": [
+                "sso:CreateAccountAssignment",
+                "sso:DeleteAccountAssignment"
+            ],
+            "Resource": [
+                "arn:aws:sso:::instance/*",
+                "arn:aws:sso:::permissionSet/*/*",
+                "arn:aws:sso:::account/*",
+                "arn:aws:sso:::application/*/*"
+            ]
+        }
+    ]
+}

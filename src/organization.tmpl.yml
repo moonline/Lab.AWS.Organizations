@@ -24,6 +24,31 @@ Resources:
     Properties:
       FeatureSet: ALL
 
+  ManagementOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: admin
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: prod
+
+  SecurityAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: admin-security
+      Email: !Sub
+        - "${prefix}+${accountName}@${organizationMailDomain}"
+        - prefix: !Select [0, !Split ["@", !Ref organizationEmail]]
+          accountName: admin-security
+          organizationMailDomain:
+            !Select [1, !Split ["@", !Ref organizationEmail]]
+      ParentIds:
+        - !Ref ManagementOU
+      Tags:
+        - Key: environment
+          Value: prod
+
   DevelopmentOU:
     Type: AWS::Organizations::OrganizationalUnit
     Properties:
@@ -83,3 +108,6 @@ Outputs:
   OrganizationArn:
     Description: ARN of the organization
     Value: !GetAtt Organization.Arn
+  SecurityAccountId:
+    Description: ID of the security account
+    Value: !Ref SecurityAccount

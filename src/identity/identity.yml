@@ -23,6 +23,9 @@ Parameters:
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-organizations-organizationalunit.html#cfn-organizations-organizationalunit-parentid
     AllowedPattern: ^(r-[0-9a-z]{4,32})|(ou-[0-9a-z]{4,32}-[a-z0-9]{8,32})$
     Description: Root ID of the organization
+  securityAccountId:
+    Type: String
+    Description: ID of the security account
   supportedRegions:
     Type: String
     Description: Comma separated list of supported regions
@@ -32,6 +35,9 @@ Parameters:
   cloudformationOrganizationsAccessFunctionArn:
     Type: String
     Description: Cloudformation organizations access custom resource Lambda function ARN
+  organizationsDelegatedAdministratorFunctionArn:
+    Type: String
+    Description: Cloudformation organizations delegated administrator custom resource Lambda function ARN
   policyNamePostfix:
     Type: String
     Description: Postfix to make policy names unique
@@ -47,7 +53,16 @@ Resources:
     Properties:
       ServiceToken: !Ref organizationsAwsServiceAccessFunctionArn
       ServiceTimeout: 30
-      service: "sso.amazonaws.com"
+      service: sso.amazonaws.com
+
+  IdentityCenterDelegatedAdministrator:
+    Type: Custom::OrganizationsDelegatedAdministrator
+    DependsOn: EnableSsoOrganizationsAccess
+    Properties:
+      ServiceToken: !Ref organizationsDelegatedAdministratorFunctionArn
+      ServiceTimeout: 10
+      accountId: !Ref securityAccountId
+      service: sso.amazonaws.com
 
   # Enabling trusted access for StackSets ONLY works through Cloudformation API
   # CloudFormation does not support service-linked roles
@@ -111,7 +126,63 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
-  # Permission sets
+  ##
+  # Management account permission sets
+  ##
+  ManagementAdministratorPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
+    Properties:
+      Name: ManagementAdministrator
+      Description: Administrator for management account, allowed to do everything
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+        - Key: module
+          Value: management
+
+  ManagementPowerUserPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
+    Properties:
+      Name: ManagementPowerUser
+      Description: Power user for management account, based on AWS PowerUser policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+        - Key: module
+          Value: management
+
+  ManagementReadOnlyPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    DependsOn:
+      - OrganizationPoliciesStackSet
+      - OrganizationPoliciesStack
+    Properties:
+      Name: ManagementReadOnly
+      Description: Read only access for management account, based on AWS ReadOnlyAccess policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+        - Key: module
+          Value: management
+
+  ##
+  # Permission sets for normal accounts
+  ##
   AdministratorPermissionSet:
     Type: AWS::SSO::PermissionSet
     DependsOn:
@@ -165,6 +236,27 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  UserManagerPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: UserManager
+      Description: Manage Identity Store / SSO users
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSSSOReadOnly"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSSSODirectoryReadOnly"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            # Update version number when changing the policy
+            # Otherwise CloudFormation will not register the change
+            Location: ./user-manager-policy-v3.json
+            # TODO limit permission to organization and account
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
 Outputs:
   PermissionSets:
     Description: Identity center permission sets
@@ -173,6 +265,8 @@ Outputs:
         Administrator: "${AdministratorPermissionSetArn}"
         PowerUser: "${PowerUserPermissionSetArn}"
         ReadOnly: "${ReadOnlyPermissionSetArn}"
+        UserManager: "${UserManagerPermissionSetArn}"
       - AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
         PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
         ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
+        UserManagerPermissionSetArn: !GetAtt UserManagerPermissionSet.PermissionSetArn

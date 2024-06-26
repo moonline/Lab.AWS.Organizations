@@ -55,13 +55,30 @@ Globals:
 
 Resources:
   # https://www.alexdebrie.com/posts/cloudformation-custom-resources/
+
+  ##
+  # Shared layers
+  # https://docs.aws.amazon.com/lambda/latest/dg/layers-sam.html
+  ##
   CustomResourceHelperLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      # https://docs.aws.amazon.com/lambda/latest/dg/layers-sam.html
       LayerName: !Sub "custom-resource-helper-${environment}"
       Description: Custom Resource Helper for Python https://github.com/aws-cloudformation/custom-resource-helper
-      ContentUri: "./lambda/custom_resource_helper/dependencies"
+      ContentUri: "./lambda-layer/custom_resource_helper/dependencies"
+      CompatibleRuntimes:
+        - !Ref pythonVersion
+      CompatibleArchitectures:
+        - !Ref architecture
+    Metadata:
+      BuildMethod: !Ref pythonVersion
+
+  MypyBoto3OrganizationsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "mypy-boto3-organizations-${environment}"
+      Description: Mypy Boto3 Organizations typings for Python https://pypi.org/project/mypy-boto3-organizations/
+      ContentUri: "./lambda-layer/mypy_boto3_organizations/dependencies"
       CompatibleRuntimes:
         - !Ref pythonVersion
       CompatibleArchitectures:
@@ -148,19 +165,6 @@ Resources:
   ##
   # OrganizationsAwsServiceAccess
   ##
-  OrganizationsAwsServiceAccessLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: !Sub "organizations-aws-service-access-dependencies-${environment}"
-      Description: OrganizationsAwsServiceAccessFunction dependencies
-      ContentUri: "./lambda/organizations_aws_service_access/dependencies"
-      CompatibleRuntimes:
-        - !Ref pythonVersion
-      CompatibleArchitectures:
-        - !Ref architecture
-    Metadata:
-      BuildMethod: !Ref pythonVersion
-
   OrganizationsAwsServiceAccessFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -171,7 +175,7 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
-        - !Ref OrganizationsAwsServiceAccessLayer
+        - !Ref MypyBoto3OrganizationsLayer
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: organizations_aws_service_access
@@ -213,19 +217,6 @@ Resources:
   ##
   # OrganizationsPolicyType
   ##
-  OrganizationsPolicyTypeLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: !Sub "organizations-policy-type-dependencies-${environment}"
-      Description: OrganizationsPolicyTypeFunction dependencies
-      ContentUri: "./lambda/organizations_policy_type/dependencies"
-      CompatibleRuntimes:
-        - !Ref pythonVersion
-      CompatibleArchitectures:
-        - !Ref architecture
-    Metadata:
-      BuildMethod: !Ref pythonVersion
-
   OrganizationsPolicyTypeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -236,7 +227,7 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
-        - !Ref OrganizationsPolicyTypeLayer
+        - !Ref MypyBoto3OrganizationsLayer
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: organizations_policy_type
@@ -275,6 +266,58 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  ##
+  # OrganizationsDelegatedAdministrator
+  ##
+  OrganizationsDelegatedAdministratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "organizations-delegated-administrator-${environment}"
+      Description: Register/deregister an organizations delegated administrator
+      Handler: index.handler
+      CodeUri: "./lambda/organizations_delegated_administrator/src"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !Ref CustomResourceHelperLayer
+        - !Ref MypyBoto3OrganizationsLayer
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: organizations_delegated_administrator
+      Policies:
+        - AWSLambdaExecute
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: AllowListDelegatedAdministrators
+              Effect: Allow
+              Action:
+                - organizations:ListDelegatedAdministrators
+              Resource: "*" # Only * supported
+              Condition:
+                StringEquals:
+                  "aws:PrincipalOrgId":
+                    - !Ref organizationId
+            - Sid: AllowRegisterDeregisterDelegatedAdministrator
+              Effect: Allow
+              Action:
+                - organizations:ListDelegatedServicesForAccount
+                - organizations:RegisterDelegatedAdministrator
+                - organizations:DeregisterDelegatedAdministrator
+              Resource:
+                - !Sub "arn:aws:organizations::${AWS::AccountId}:account/o-*/*"
+
+  # Force lambda logs to be retained only 1 week
+  OrganizationsDelegatedAdministratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [OrganizationsDelegatedAdministratorFunction]
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${OrganizationsDelegatedAdministratorFunction}"
+      RetentionInDays: 7
+      Tags:
+        - Key: application
+          Value: cloudformation-custom-resources
+        - Key: environment
+          Value: !Ref environment
+
 Outputs:
   CloudformationOrganizationsAccessFunctionArn:
     Description: "ARN for the CloudformationOrganizationsAccessFunction custom resource function"
@@ -285,3 +328,6 @@ Outputs:
   OrganizationsPolicyTypeFunctionArn:
     Description: "ARN for the OrganizationsPolicyTypeFunctionArn custom resource function"
     Value: !GetAtt OrganizationsPolicyTypeFunction.Arn
+  OrganizationsDelegatedAdministratorFunctionArn:
+    Description: "ARN for the OrganizationsDelegatedAdministratorFunctionArn custom resource function"
+    Value: !GetAtt OrganizationsDelegatedAdministratorFunction.Arn

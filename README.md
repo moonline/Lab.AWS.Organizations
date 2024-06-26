@@ -10,8 +10,10 @@ Key concepts see https://docs.aws.amazon.com/organizations/latest/userguide/orgs
 CloudFormation is missing some key resources for managing AWS Organizations.
 These are covered by the following custom resources:
 
-* Organizations access: [organizations_aws_service_access](src/lambda/organizations_aws_service_access/README.md)
-* CloudFormation organizations access: [cloudformation_organizations_access](src/lambda/cloudformation_organizations_access/README.md)
+* Organizations service access: [organizations_aws_service_access](src/custom-resources/lambda/organizations_aws_service_access/README.md)
+* Organizations policy type: [organizations_policy_type](src/custom-resources/lambda/organizations_policy_type/README.md)
+* Organizations delegated administrator: [organizations_delegated_administrator](src/custom-resources/lambda/delegated_administrator/README.md)
+* CloudFormation StackSets organizations access: [cloudformation_organizations_access](src/custom-resources/lambda/cloudformation_organizations_access/README.md)
 
 
 ## Architecture
@@ -21,12 +23,14 @@ These are covered by the following custom resources:
 title: Organization
 ---
 flowchart TB
-    root([AWS Organization Root])
-        root --- dev(DevelopmentOU)
-            dev --- project1(DevProjectOU)
-                project1 --- project1Sandbox[DevProject1Sandbox]
-
-        root --- prod(ProductionOU)
+    organization([fa:fa-sitemap\nAWS Organizations root])
+        organization --- managementOU("fa:fa-folder-open\nManagement OU")
+            managementOU --- security["fa:fa-box\nSecurity"]
+        organization --- developmentOU("fa:fa-folder-open\nDevelopment OU")
+            developmentOU --- project1Dev["fa:fa-box\nProject 1 DEV"]
+            developmentOU --- project1Test["fa:fa-box\nProject 1 TEST"]
+        organization --- productionOU("fa:fa-folder-open\nProduction OU")
+            productionOU --- project1Prod["fa:fa-box\nProject 1 PROD"]
 ```
 
 
@@ -37,32 +41,52 @@ flowchart TB
 title: Organization deployment
 ---
 flowchart TB
-    org{fa:fa-rocket}
-    customResources[fa:fa-cubes\nCustom resources] 
-        customResources -.- organizationServiceAccess[fa:fa-code\nOrganization service access\nfunction]
-        customResources -.- organizationPolicyType[fa:fa-code\nOrganization policy\ntype function]
-        customResources -.- cloudFormationOrganizationAccess[fa:fa-code\nCloudformation organization\naccess function]
-        customResources --> org
+    subgraph mainStack ["fa:fa-layer-group Main Stack"]
+        style mainStack fill:orange
 
-    organization[fa:fa-sitemap\nAWS Organization]
-        organization --> org
-        organization -.- DevelopmentOU
-        DevelopmentOU -.- Project1Dev
-        DevelopmentOU -.- Project1Test
-        organization -.- ProductionOU
-        ProductionOU -.- Project1Prod
+        org{fa:fa-rocket}
+    end
 
-        org --- enableSCPs{{fa:fa-cube\nEnable Service Control Policies}}
-            enableSCPs --> scps(fa:fa-shield-halved\nDeploy Service Control Policies)
+    subgraph customResourcesStack ["fa:fa-layer-group Custom Resources Stack"]
+        org --- customResources[fa:fa-cubes\nCustom resources]
+            customResources -.- organizationsServiceAccess[fa:fa-code\nOrganizations\nservice\naccess\nfunction]
+            customResources -.- organizationsPolicyType[fa:fa-code\nOrganizations\npolicy\ntype\nfunction]
+            customResources -.- organizationsDelegatedAdministrator[fa:fa-code\nOrganizations\ndelegated\nadministrator\nfunction]
+            customResources -..- cloudFormationOrganizationAccess[fa:fa-code\nCloudformation\norganization\naccess\nfunction]
+    end
 
-        org --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail organization access}}
-            enableCloudTrail --> cloudTrailBucket[fa:fa-bucket fa:fa-certificate\nCloudTrail logs bucket & policy]
+    subgraph organizationStack ["fa:fa-layer-group Organization Stack"]
+        organization(fa:fa-sitemap\nAWS Organization)
+            org --- organization
+            organization --- organizationalUnits("fa:fa-folder-open\nOrganizational\nunits")
+                organizationalUnits --- accounts("fa:fa-box\nAccounts")
+    end
+
+    subgraph serviceControlPoliciesStack ["fa:fa-layer-group SCP Stack"]
+        org --- enableSCPs{{fa:fa-cube\nEnable Service\nControl Policies}}
+            style enableSCPs fill:darkgrey
+            enableSCPs --> scps(fa:fa-shield-halved\nService Control\nPolicies)
+    end
+
+    subgraph loggingStack ["fa:fa-layer-group Logging Stack"]
+        org --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail\norganizations access}}
+            enableCloudTrail --> cloudTrailBucket[fa:fa-bucket fa:fa-certificate\nCloudTrail logs\nbucket & policy]
+                style enableCloudTrail fill:darkgrey
                 cloudTrailBucket --> cloudTrail[fa:fa-table-list\nCloudTrail trail]
+    end
 
-        org --- enableSSO{{fa:fa-cube\nEnable SSO organization access}}
-            enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation StackSets\norganization access}}
-                enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
-                    managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+    subgraph identityStack ["fa:fa-layer-group Identity Stack"]
+        org --- enableIdentityCenter(["fa:fa-hands\nEnable Identity Center\nmanually in AWS\nConsole"])
+            style enableIdentityCenter fill:tomato
+            enableIdentityCenter --- enableSSO{{fa:fa-cube\nEnable SSO\norganizations access}}
+                style enableSSO fill:darkgrey
+                enableIdentityCenter ---> registerDelegatedAdmin{{fa:fa-cube\nRegister delegated\nadministrator for\nIdentity Center}}
+                    style registerDelegatedAdmin fill:darkgrey
+                enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess}}
+                    style enableCloudformation fill:darkgrey
+                    enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
+                        managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+    end
 ```
 
 
@@ -105,15 +129,18 @@ sam build
     sam deploy --config-env prod --parameter-overrides "organizationEmail=aws@your-domain.tld"
     ```
 
-3. Enable Identity Center in AWS Organizations console https://us-east-1.console.aws.amazon.com/organizations/v2/home/services/AWS%20IAM%20Identity%20Center%20(AWS%20Single%20Sign-On)
-4. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
-5. Enable Service Control Policies https://us-east-1.console.aws.amazon.com/organizations/v2/home/policies/service-control-policy
-6. Get identity center instance ARN
+3. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
+
+    **26/06/24**: AWS support confirmed that there is no support to enable IAM Identity Center programatically:
+
+    > Unfortunately, I sincerely regret to convey that enabling AWS IAM Identity Center via API/CLI/boto3 calls is currently not supported. At the moment, there is no alternative method to enable IAM Identity Center other than via the AWS management console. 
+
+4. Get identity center instance ARN
     ```sh
     aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0].InstanceArn'
     ```
     
-7. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
+5. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
     ```sh
     sam deploy --config-env prod --parameter-overrides \
         "organizationEmail=aws@your-domain.tld" \
@@ -127,7 +154,7 @@ sam build
         $(cat samparameters.json | jq -r '.prod | to_entries | map([.key, .value]|join("=")) | join(" ")')
     ```
 
-8. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/6987d2e11148f607/users
+6. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/6987d2e11148f607/users
 
 
 ### Get outputs
