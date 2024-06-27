@@ -12,6 +12,10 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  # TODO
+  # organizationStackName:
+  #   Type: String
+  #   Description: Organization stack name, used to import organization properties
   managementAccountId:
     Type: String
     Description: Organizations management account ID

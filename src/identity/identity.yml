@@ -12,6 +12,10 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  # TODO
+  # organizationStackName:
+  #   Type: String
+  #   Description: Organization stack name, used to import organization properties
   # https://dev.to/hayao_k/how-to-manage-aws-sso-account-assignments-in-cloudformaton-5bmm
   identityCenterInstanceArn:
     Type: String
@@ -55,6 +59,10 @@ Resources:
       ServiceTimeout: 30
       service: sso.amazonaws.com
 
+  ##
+  # Delegate IAM Identity Center management to security account
+  # https://aws.amazon.com/de/blogs/security/getting-started-with-aws-sso-delegated-administration/
+  ##
   IdentityCenterDelegatedAdministrator:
     Type: Custom::OrganizationsDelegatedAdministrator
     DependsOn: EnableSsoOrganizationsAccess

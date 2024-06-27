@@ -60,6 +60,7 @@ Resources:
     Properties:
       Parameters:
         environment: !Ref environment
+        # organizationStackName: organization
         organizationId: !GetAtt OrganizationStack.Outputs.OrganizationId
       Tags:
         - Key: environment
@@ -72,6 +73,7 @@ Resources:
     Properties:
       Parameters:
         environment: !Ref environment
+        # organizationStackName: organization
         managementAccountId: !GetAtt OrganizationStack.Outputs.ManagementAccountId
         organizationId: !GetAtt OrganizationStack.Outputs.OrganizationId
         organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
@@ -87,6 +89,7 @@ Resources:
     Properties:
       Parameters:
         environment: !Ref environment
+        #organizationStackName: organization
         identityCenterInstanceArn:
           !If [
             "HasIdentityCenterInstance",
@@ -110,6 +113,7 @@ Resources:
     Properties:
       Parameters:
         environment: !Ref environment
+        # organizationStackName: organization
         organizationRootId: !GetAtt OrganizationStack.Outputs.OrganizationRootId
         supportedRegions: !Ref supportedRegions
         organizationsPolicyTypeFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsPolicyTypeFunctionArn
@@ -123,14 +127,20 @@ Outputs:
   ManagementAccountId:
     Description: Account ID of the organizations management account
     Value: !GetAtt OrganizationStack.Outputs.ManagementAccountId
-  OrganizationArn:
+    Export:
+      Name: !Sub "${AWS::StackName}:ManagementAccountId"
+  OrganizationId:
     Description: ID of the organization
-    Value: !GetAtt OrganizationStack.Outputs.OrganizationArn
-  PermissionSets:
-    Description: Identity center permission sets
-    Value:
-      !If [
-        HasIdentityCenterInstance,
-        !GetAtt IdentityStack.Outputs.PermissionSets,
-        "",
-      ]
+    Value: !GetAtt OrganizationStack.Outputs.OrganizationId
+    Export:
+      Name: !Sub "${AWS::StackName}:OrganizationId"
+  OrganizationRootId:
+    Description: ID of the organization root
+    Value: !GetAtt OrganizationStack.Outputs.OrganizationRootId
+    Export:
+      Name: !Sub "${AWS::StackName}:OrganizationRootId"
+  SecurityAccountId:
+    Description: ID of the security account
+    Value: !GetAtt OrganizationStack.Outputs.SecurityAccountId
+    Export:
+      Name: !Sub "${AWS::StackName}:SecurityAccountId"

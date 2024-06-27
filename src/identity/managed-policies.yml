@@ -15,6 +15,10 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  # TODO
+  # organizationStackName:
+  #   Type: String
+  #   Description: Organization stack name, used to import organization properties
   policyPath:
     Type: String
     Description: Organization policy path

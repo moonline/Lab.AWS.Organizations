@@ -12,6 +12,10 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
+  # TODO
+  # organizationStackName:
+  #   Type: String
+  #   Description: Organization stack name, used to import organization properties
   organizationId:
     Type: String
     Description: Organization ID
@@ -87,6 +91,41 @@ Resources:
       BuildMethod: !Ref pythonVersion
 
   ##
+  # Utilities
+  ##
+  EchoUtilityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "echo-utility-${environment}"
+      Description: Echo utility, used to declare variables
+      Handler: index.handler
+      CodeUri: "./lambda/echo_utility/src"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !Ref CustomResourceHelperLayer
+
+  # Force lambda logs to be retained only 1 week
+  EchoUtilityFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [EchoUtilityFunction]
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${EchoUtilityFunction}"
+      RetentionInDays: 7
+      Tags:
+        - Key: application
+          Value: cloudformation-custom-resources
+        - Key: environment
+          Value: !Ref environment
+
+  Variables:
+    Type: Custom::EchoUtility
+    DependsOn: [EchoUtilityFunction, EchoUtilityFunctionLogGroup]
+    Properties:
+      ServiceToken: !GetAtt EchoUtilityFunction.Arn
+      ServiceTimeout: 10
+      powertoolsLayerArn: !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+
+  ##
   # CloudformationOrganizationsAccess
   ##
   CloudformationOrganizationsAccessLayer:
@@ -110,7 +149,7 @@ Resources:
       Handler: index.handler
       CodeUri: "./lambda/cloudformation_organizations_access/src"
       Layers:
-        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !GetAtt Variables.powertoolsLayerArn
         - !Ref CustomResourceHelperLayer
         - !Ref CloudformationOrganizationsAccessLayer
       Environment:
@@ -173,7 +212,7 @@ Resources:
       Handler: index.handler
       CodeUri: "./lambda/organizations_aws_service_access/src"
       Layers:
-        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !GetAtt Variables.powertoolsLayerArn
         - !Ref CustomResourceHelperLayer
         - !Ref MypyBoto3OrganizationsLayer
       Environment:
@@ -193,6 +232,8 @@ Resources:
                 StringEquals:
                   "aws:PrincipalOrgId":
                     - !Ref organizationId
+                    # - "Fn::ImportValue":
+                    #     "Fn::Sub": "${organizationStackName}:OrganizationId"
             - Effect: Allow
               Action:
                 - iam:GetRole
@@ -225,7 +266,7 @@ Resources:
       Handler: index.handler
       CodeUri: "./lambda/organizations_policy_type/src"
       Layers:
-        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !GetAtt Variables.powertoolsLayerArn
         - !Ref CustomResourceHelperLayer
         - !Ref MypyBoto3OrganizationsLayer
       Environment:
@@ -277,7 +318,7 @@ Resources:
       Handler: index.handler
       CodeUri: "./lambda/organizations_delegated_administrator/src"
       Layers:
-        - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
+        - !GetAtt Variables.powertoolsLayerArn
         - !Ref CustomResourceHelperLayer
         - !Ref MypyBoto3OrganizationsLayer
       Environment:
@@ -319,6 +360,9 @@ Resources:
           Value: !Ref environment
 
 Outputs:
+  EchoUtilityFunctionArn:
+    Description: "ARN for the EchoUtilityFunction custom resource function"
+    Value: !GetAtt EchoUtilityFunction.Arn
   CloudformationOrganizationsAccessFunctionArn:
     Description: "ARN for the CloudformationOrganizationsAccessFunction custom resource function"
     Value: !GetAtt CloudformationOrganizationsAccessFunction.Arn
