@@ -1,0 +1,10 @@
+[
+    {
+        "ParameterKey": "environment",
+        "ParameterValue": "dev"
+    },
+    {
+        "ParameterKey": "organizationEmail",
+        "ParameterValue": "aws@domain.tld"
+    }
+]

@@ -136,18 +136,56 @@ flowchart TB
         ```
 
 
-### Organization deployment
+### Organization deployment (`/organization`)
 
-TODO Create parameters file
+1. Validate template file
 
-```bash
-cd organization
-aws cloudformation deploy \
-    --stack-name organization \
-    --role-arn TODO \
-    --template-file organization.yml --parameter-overrides file://parameters.prod.json
-```
+    ```bash
+    cd organization
+    aws cloudformation validate-template --template-body file://
+organization.yml
+    ```
 
+2. Copy `parameters.tmpl.json` to create a parameters file for the corresponding environment, e.g. `parameters.prod.json`. Update the parameters.
+3. Deploy the stack, using the deployment role deployed before (adjust the environment):
+   * To deploy a new stack or update an existing one:
+
+        ```bash
+        aws cloudformation deploy \
+            --stack-name organization \
+            --role-arn "arn:aws:iam::123456789000:role/deployment/deployment-roles-OrganizationDeploymentRole-abcdefghijkl" \
+            --template-file "organization.yml" \
+            --parameter-overrides "file://parameters.prod.json"
+        ```
+
+   * If there are existing resources:
+        Copy and adjust `resources-to-import.tmpl.json`.
+
+        ```bash
+        aws cloudformation create-change-set \
+            --stack-name organization \
+            --role-arn "arn:aws:iam::123456789000:role/deployment/deployment-roles-OrganizationDeploymentRole-abcdefghijkl" \
+            --change-set-type IMPORT \
+            --change-set-name import-org \
+            --template-body "file://organization.yml" \
+            --parameters "$(jq -c . parameters.prod.json)" \
+            --resources-to-import "file://resources-to-import.prod.json"
+        ```
+
+        ```bash
+        aws cloudformation describe-change-set \
+            --change-set-name import-org \
+            --stack-name organization
+        ```
+
+        ```bash
+        aws cloudformation execute-change-set \
+            --change-set-name import-org \
+            --stack-name organization
+        ```
+
+
+## Organization services `/organization-services`
 
 For instructions regarding SAM, see https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli.html.
 

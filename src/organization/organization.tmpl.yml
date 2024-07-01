@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Organization with AWS Organizations
+
+Parameters:
+  environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  organizationEmail:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+    Description: >
+      An email address like 'aws@domain.tld'.
+      Each account will get a labeled address like 'aws+the-account-name@domain.tld'.
+
+Resources:
+  Organization:
+    DeletionPolicy: Retain
+    Type: AWS::Organizations::Organization
+    Properties:
+      FeatureSet: ALL
+
+  ManagementOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: admin
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: prod
+
+  SecurityAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: admin-security
+      Email: !Sub
+        - "${prefix}+${accountName}@${organizationMailDomain}"
+        - prefix: !Select [0, !Split ["@", !Ref organizationEmail]]
+          accountName: admin-security
+          organizationMailDomain:
+            !Select [1, !Split ["@", !Ref organizationEmail]]
+      ParentIds:
+        - !Ref ManagementOU
+      Tags:
+        - Key: environment
+          Value: prod
+
+  DevelopmentOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: dev
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: dev
+
+  DevProject1OU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: dev-project1
+      ParentId: !Ref DevelopmentOU
+      Tags:
+        - Key: environment
+          Value: dev
+
+  DevProject1SandboxAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: dev-project1-sandbox
+      Email: !Sub
+        - "${prefix}+${accountName}@${organizationMailDomain}"
+        - prefix: !Select [0, !Split ["@", !Ref organizationEmail]]
+          accountName: dev-project1-sandbox
+          organizationMailDomain:
+            !Select [1, !Split ["@", !Ref organizationEmail]]
+      ParentIds:
+        - !Ref DevProject1OU
+      Tags:
+        - Key: environment
+          Value: dev
+
+  ProductionOrganizationalUnit:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: prod
+      ParentId: !GetAtt Organization.RootId
+      Tags:
+        - Key: environment
+          Value: prod
+
+Outputs:
+  ManagementAccountId:
+    Description: Account ID of the organizations management account
+    Value: !GetAtt Organization.ManagementAccountId
+  ManagementAccountArn:
+    Description: Account ARN of the organizations management account
+    Value: !GetAtt Organization.ManagementAccountArn
+  OrganizationId:
+    Description: ID of the organization
+    Value: !GetAtt Organization.Id
+  OrganizationRootId:
+    Description: Root ID of the organization
+    Value: !GetAtt Organization.RootId
+  OrganizationArn:
+    Description: ARN of the organization
+    Value: !GetAtt Organization.Arn
+  SecurityAccountId:
+    Description: ID of the security account
+    Value: !Ref SecurityAccount

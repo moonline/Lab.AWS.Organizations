@@ -1,0 +1,51 @@
+[
+    {
+        "ResourceType": "AWS::Organizations::Organization",
+        "LogicalResourceId": "Organization",
+        "ResourceIdentifier": {
+            "Id": "o-abcdefghij"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::OrganizationalUnit",
+        "LogicalResourceId": "ManagementOU",
+        "ResourceIdentifier": {
+            "Id": "ou-abcd-aabbccdd"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::OrganizationalUnit",
+        "LogicalResourceId": "DevelopmentOU",
+        "ResourceIdentifier": {
+            "Id": "ou-abcd-eeffgghh"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::OrganizationalUnit",
+        "LogicalResourceId": "ProductionOrganizationalUnit",
+        "ResourceIdentifier": {
+            "Id": "ou-abcd-iijjkkll"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::OrganizationalUnit",
+        "LogicalResourceId": "DevProject1OU",
+        "ResourceIdentifier": {
+            "Id": "ou-abcd-mmnnoopp"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::Account",
+        "LogicalResourceId": "SecurityAccount",
+        "ResourceIdentifier": {
+            "AccountId": "123456789100"
+        }
+    },
+    {
+        "ResourceType": "AWS::Organizations::Account",
+        "LogicalResourceId": "DevProject1SandboxAccount",
+        "ResourceIdentifier": {
+            "AccountId": "123456789200"
+        }
+    }
+]
