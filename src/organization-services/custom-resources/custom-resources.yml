@@ -12,10 +12,6 @@ Parameters:
       - test
       - prod
     Description: Deployment environment, e.g. dev for development
-  # TODO
-  # organizationStackName:
-  #   Type: String
-  #   Description: Organization stack name, used to import organization properties
   organizationId:
     Type: String
     Description: Organization ID
@@ -103,8 +99,11 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:017000801446:layer:${powertoolsNameVersion}"
         - !Ref CustomResourceHelperLayer
+      Policies:
+        - AWSLambdaExecute
 
   # Force lambda logs to be retained only 1 week
+  # TODO this log group is not deleted correctly when deleting the stack
   EchoUtilityFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DependsOn: [EchoUtilityFunction]
@@ -117,6 +116,9 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  ##
+  # Variables
+  ##
   Variables:
     Type: Custom::EchoUtility
     DependsOn: [EchoUtilityFunction, EchoUtilityFunctionLogGroup]
@@ -232,8 +234,6 @@ Resources:
                 StringEquals:
                   "aws:PrincipalOrgId":
                     - !Ref organizationId
-                    # - "Fn::ImportValue":
-                    #     "Fn::Sub": "${organizationStackName}:OrganizationId"
             - Effect: Allow
               Action:
                 - iam:GetRole

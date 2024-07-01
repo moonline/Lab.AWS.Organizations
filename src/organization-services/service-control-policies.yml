@@ -13,10 +13,6 @@ Parameters:
       - test
       - prod
     Description: Deployment environment e.g. dev for development
-  # TODO
-  # organizationStackName:
-  #   Type: String
-  #   Description: Organization stack name, used to import organization properties
   organizationRootId:
     Type: String
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-organizations-organizationalunit.html#cfn-organizations-organizationalunit-parentid

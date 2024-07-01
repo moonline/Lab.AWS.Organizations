@@ -1,0 +1,13 @@
+{
+    "default": {
+        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-1234abcd1234abcd",
+        ,
+        "supportedRegions": "us-east-1,eu-central-1",
+        "organizationStackName": "organization-dev"
+    },
+    "prod": {
+        "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-5678efgh5678efgh",
+        "supportedRegions": "us-east-1,eu-central-1",
+        "organizationStackName": "organization"
+    }
+}

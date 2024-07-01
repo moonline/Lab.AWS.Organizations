@@ -4,7 +4,7 @@ version = 0.1
 
 [default]
 [default.global.parameters]
-stack_name = "organization"
+stack_name = "organization-services"
 
 [default.build.parameters]
 cached = true
@@ -31,9 +31,9 @@ warm_containers = "EAGER"
 warm_containers = "EAGER"
 
 [dev.deploy.parameters]
-stack_name = "organization-dev"
+stack_name = "organization-services-dev"
 resolve_s3 = true
-s3_prefix = "organization-dev"
+s3_prefix = "organization-services-dev"
 region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
@@ -41,9 +41,9 @@ parameter_overrides = "environment=\"dev\""
 image_repositories = []
 
 [prod.deploy.parameters]
-stack_name = "organization"
+stack_name = "organization-services"
 resolve_s3 = true
-s3_prefix = "organization"
+s3_prefix = "organization-services"
 region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"

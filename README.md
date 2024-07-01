@@ -41,51 +41,61 @@ flowchart TB
 title: Organization deployment
 ---
 flowchart TB
-    subgraph mainStack ["fa:fa-layer-group Main Stack"]
-        style mainStack fill:orange
+    subgraph organizationStack ["fa:fa-layer-group Organization Stack"]
+        style organizationStack fill:orange
+        direction TB
 
-        org{fa:fa-rocket}
+        organization(fa:fa-sitemap\nAWS Organization)
+            organization --- organizationalUnits("fa:fa-folder-open\nOrganizational\nunits")
+                organizationalUnits --- accounts("fa:fa-box\nAccounts")
     end
 
+    organizationStack --> enableIdentityCenter(["fa:fa-hands\nEnable Identity Center\nmanually in AWS\nConsole"])
+        style enableIdentityCenter fill:tomato
+
+    subgraph organizationServicesStack ["fa:fa-layer-group Organization Services Stack"]
+        style organizationServicesStack fill:orange
+
+        orgServicesDeployment{fa:fa-rocket}
+    end
+
+    enableIdentityCenter --> organizationServicesStack
+
     subgraph customResourcesStack ["fa:fa-layer-group Custom Resources Stack"]
-        org --- customResources[fa:fa-cubes\nCustom resources]
+        orgServicesDeployment --- customResources[fa:fa-cubes\nCustom resources]
             customResources -.- organizationsServiceAccess[fa:fa-code\nOrganizations\nservice\naccess\nfunction]
             customResources -.- organizationsPolicyType[fa:fa-code\nOrganizations\npolicy\ntype\nfunction]
             customResources -.- organizationsDelegatedAdministrator[fa:fa-code\nOrganizations\ndelegated\nadministrator\nfunction]
             customResources -..- cloudFormationOrganizationAccess[fa:fa-code\nCloudformation\norganization\naccess\nfunction]
     end
 
-    subgraph organizationStack ["fa:fa-layer-group Organization Stack"]
-        organization(fa:fa-sitemap\nAWS Organization)
-            org --- organization
-            organization --- organizationalUnits("fa:fa-folder-open\nOrganizational\nunits")
-                organizationalUnits --- accounts("fa:fa-box\nAccounts")
-    end
-
     subgraph serviceControlPoliciesStack ["fa:fa-layer-group SCP Stack"]
-        org --- enableSCPs{{fa:fa-cube\nEnable Service\nControl Policies}}
+        orgServicesDeployment --- enableSCPs{{fa:fa-cube\nEnable Service\nControl Policies}}
             style enableSCPs fill:darkgrey
+
             enableSCPs --> scps(fa:fa-shield-halved\nService Control\nPolicies)
     end
 
     subgraph loggingStack ["fa:fa-layer-group Logging Stack"]
-        org --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail\norganizations access}}
+        orgServicesDeployment --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail\norganizations access}}
             enableCloudTrail --> cloudTrailBucket[fa:fa-bucket fa:fa-certificate\nCloudTrail logs\nbucket & policy]
                 style enableCloudTrail fill:darkgrey
+
                 cloudTrailBucket --> cloudTrail[fa:fa-table-list\nCloudTrail trail]
     end
 
     subgraph identityStack ["fa:fa-layer-group Identity Stack"]
-        org --- enableIdentityCenter(["fa:fa-hands\nEnable Identity Center\nmanually in AWS\nConsole"])
-            style enableIdentityCenter fill:tomato
-            enableIdentityCenter --- enableSSO{{fa:fa-cube\nEnable SSO\norganizations access}}
-                style enableSSO fill:darkgrey
-                enableIdentityCenter ---> registerDelegatedAdmin{{fa:fa-cube\nRegister delegated\nadministrator for\nIdentity Center}}
-                    style registerDelegatedAdmin fill:darkgrey
-                enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess}}
-                    style enableCloudformation fill:darkgrey
-                    enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
-                        managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+        orgServicesDeployment --- enableSSO{{fa:fa-cube\nEnable SSO\norganizations access}}
+            style enableSSO fill:darkgrey
+
+        orgServicesDeployment ---> registerDelegatedAdmin{{fa:fa-cube\nRegister delegated\nadministrator for\nIdentity Center}}
+            style registerDelegatedAdmin fill:darkgrey
+
+            enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess}}
+                style enableCloudformation fill:darkgrey
+
+                enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
+                    managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
     end
 ```
 
@@ -108,7 +118,7 @@ flowchart TB
 
 ## Deployment
 
-### Deployment role deployment
+### A - Deployment role deployment
 
 * By AWS Console:
     1. Login to the AWS Console and open [CloudFormation](https://eu-central-1.console.aws.amazon.com/cloudformation/)
@@ -136,7 +146,9 @@ flowchart TB
         ```
 
 
-### Organization deployment (`/organization`)
+### B - Organization deployment (`/organization`)
+
+To allow the import of an existing organization, plain CloudFormation is required, because SAM does not support resource import.
 
 1. Validate template file
 
@@ -185,14 +197,14 @@ organization.yml
         ```
 
 
-## Organization services `/organization-services`
+## C Organization services deployment `/organization-services`
 
 For instructions regarding SAM, see https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli.html.
 
 ### SAM build
 
 ```sh
-cd src
+cd src/organization-services
 ```
 
 ```sh
@@ -202,26 +214,21 @@ sam build
 
 ### SAM deploy
 
-1. Copy `organization.tmpl.yml` to `organization.yml` and define organizational units and accounts.
-2. Deploy organization without SSO (omit parameter `identityCenterInstanceArn`!):
-    ```sh
-    sam deploy --config-env prod --parameter-overrides "organizationEmail=aws@your-domain.tld"
-    ```
-
-3. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
+1. Enable Identity Center in IAM Identity center console https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/
 
     **26/06/24**: AWS support confirmed that there is no support to enable IAM Identity Center programatically:
 
     > Unfortunately, I sincerely regret to convey that enabling AWS IAM Identity Center via API/CLI/boto3 calls is currently not supported. At the moment, there is no alternative method to enable IAM Identity Center other than via the AWS management console. 
 
-4. Get identity center instance ARN
+3. Get identity center instance ARN
     ```sh
     aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0].InstanceArn'
     ```
     
-5. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
+4. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
     ```sh
-    sam deploy --config-env prod --parameter-overrides \
+    sam deploy --config-env prod \
+        --role-arn "arn:aws:iam::123456789000:role/deployment/deployment-roles-OrganizationServicesDeploymentRole-abcdefghijkl" \ --parameter-overrides \
         "organizationEmail=aws@your-domain.tld" \
         "identityCenterInstanceArn=arn:aws:sso:::instance/ssoins-***"
     ```
@@ -229,11 +236,13 @@ sam build
     Alternatively a `samparameters.json` file can be created (see template `samparameters.tmpl.json`)
     and the parameters can be injected when deploying (Change `.prod` to corresponding environment):
     ```sh
-    sam deploy --config-env prod --parameter-overrides \
+    sam deploy --config-env prod \
+        --role-arn "arn:aws:iam::123456789000:role/deployment/deployment-roles-OrganizationServicesDeploymentRole-abcdefghijkl" \
+        --parameter-overrides \
         $(cat samparameters.json | jq -r '.prod | to_entries | map([.key, .value]|join("=")) | join(" ")')
     ```
 
-6. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/6987d2e11148f607/users
+5. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/6987d2e11148f607/users
 
 
 ### Get outputs

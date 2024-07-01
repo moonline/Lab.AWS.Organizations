@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Organization services like CloudTrail, Identity Center and SCPs
+
+Parameters:
+  environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  identityCenterInstanceArn:
+    Type: String
+    AllowedPattern: (^$|^arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16})
+    Description: >
+      ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'.
+      Find by `aws sso-admin list-instances`.
+  supportedRegions:
+    Type: String
+    Description: >
+      Comma separated list of supported regions. The first is the main region.
+      See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html.
+      Examples:
+      - us-east-1 # US East (N. Virginia)
+      - sa-east-1 # South America (São Paulo)
+      - eu-central-1 # Europe (Frankfurt)
+      - eu-central-2 # Europe (Zurich)
+      - ap-southeast-1 # Asia Pacific (Singapore)
+      These regions must be enabled in the account: https://us-east-1.console.aws.amazon.com/billing/home?region=eu-central-1#/account?AWS-Regions
+    Default: "us-east-1,eu-central-1"
+  organizationStackName:
+    Type: String
+    Description: Organization stack name, used to import organization properties
+
+Resources:
+  CustomResourcesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        organizationId:
+          "Fn::ImportValue":
+            "Fn::Sub": "${organizationStackName}:OrganizationId"
+      TemplateURL: "./custom-resources/custom-resources.yml"
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+  Variables:
+    Type: Custom::EchoUtility
+    DependsOn: [CustomResourcesStack]
+    Properties:
+      ServiceToken: !GetAtt CustomResourcesStack.Outputs.EchoUtilityFunctionArn
+      ServiceTimeout: 10
+      organizationId:
+        "Fn::ImportValue":
+          "Fn::Sub": "${organizationStackName}:OrganizationId"
+      managementAccountId:
+        "Fn::ImportValue":
+          "Fn::Sub": "${organizationStackName}:ManagementAccountId"
+      organizationRootId:
+        "Fn::ImportValue":
+          "Fn::Sub": "${organizationStackName}:OrganizationRootId"
+      securityAccountId:
+        "Fn::ImportValue":
+          "Fn::Sub": "${organizationStackName}:SecurityAccountId"
+
+  LoggingStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        managementAccountId: !GetAtt Variables.managementAccountId
+        organizationId: !GetAtt Variables.organizationId
+        organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
+      TemplateURL: "./logging.yml"
+      TimeoutInMinutes: 5
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+  IdentityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        identityCenterInstanceArn: !Ref identityCenterInstanceArn
+        organizationRootId: !GetAtt Variables.organizationRootId
+        supportedRegions: !Ref supportedRegions
+        securityAccountId: !GetAtt Variables.securityAccountId
+        organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
+        cloudformationOrganizationsAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.CloudformationOrganizationsAccessFunctionArn
+        organizationsDelegatedAdministratorFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsDelegatedAdministratorFunctionArn
+      TemplateURL: "./identity/identity.yml"
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+  ServiceControlPoliciesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        organizationRootId: !GetAtt Variables.organizationRootId
+        supportedRegions: !Ref supportedRegions
+        organizationsPolicyTypeFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsPolicyTypeFunctionArn
+      TemplateURL: "./service-control-policies.yml"
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
+Outputs:
+  PermissionSets:
+    Description: Identity center permission sets
+    Value: !GetAtt IdentityStack.Outputs.PermissionSets
