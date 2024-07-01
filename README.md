@@ -108,6 +108,47 @@ flowchart TB
 
 ## Deployment
 
+### Deployment role deployment
+
+* By AWS Console:
+    1. Login to the AWS Console and open [CloudFormation](https://eu-central-1.console.aws.amazon.com/cloudformation/)
+    2. Deploy manually the stack from template `deployment-roles.yml`:
+       * Stack Name: `deployment-roles`
+       * Capabilities: `CAPABILITY_NAMED_IAM`
+    3. Extract the role ARNs from the outputs
+* By AWS CloudShell:
+    1. Login to the AWS Console and open [CloudShell](https://eu-central-1.console.aws.amazon.com/cloudshell/)
+    2. Upload the file `deployment-roles.yml`
+    3. Deploy the stack:
+
+        ```bash
+        aws cloudformation deploy \
+            --stack-name deployment-roles \
+            --template-file deployment-roles.yml \
+            --parameter-overrides environment=prod \
+            --capabilities CAPABILITY_IAM
+        ```
+
+    4. Extract the role ARNs from the outputs:
+
+        ```bash
+        aws cloudformation describe-stacks --stack-name deployment-roles | jq -r '.Stacks[].Outputs'
+        ```
+
+
+### Organization deployment
+
+TODO Create parameters file
+
+```bash
+cd organization
+aws cloudformation deploy \
+    --stack-name organization \
+    --role-arn TODO \
+    --template-file organization.yml --parameter-overrides file://parameters.prod.json
+```
+
+
 For instructions regarding SAM, see https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli.html.
 
 ### SAM build

@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Roles required to deploy the AWS Organization
+
+Parameters:
+  environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+
+Resources:
+  OrganizationDeploymentRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /deployment/
+      Policies:
+        - PolicyName: deploy-organization
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowReadOrganization
+                Effect: Allow
+                Action:
+                  - "organizations:Get*"
+                  - "organizations:List*"
+                  - "organizations:Describe*"
+                Resource: "*"
+              - Sid: AllowCrudOrganization1
+                Effect: Allow
+                Action:
+                  - organizations:CreateOrganizationalUnit
+                  - organizations:DeleteOrganizationalUnit
+                  - organizations:UpdateOrganizationalUnit
+                  - organizations:CloseAccount
+                  - organizations:MoveAccount
+                  - organizations:InviteAccountToOrganization
+                Resource:
+                  - !Sub "arn:aws:organizations::${AWS::AccountId}:ou/o-*/ou-*"
+                  - !Sub "arn:aws:organizations::${AWS::AccountId}:root/o-*/r-*"
+                  - !Sub "arn:aws:organizations::${AWS::AccountId}:account/o-*/*"
+              - Sid: AllowCrudOrganization2
+                Effect: Allow
+                Action:
+                  - organizations:CreateAccount
+                  - organizations:DeleteOrganization
+                  - organizations:CreateOrganization
+                Resource: "*" # Only * supported
+              - Sid: AllowCrudIamServiceLinkedRole
+                Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                  - iam:DeleteServiceLinkedRole
+                  - iam:GetServiceLinkedRoleDeletionStatus
+                Resource:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+
+  OrganizationServicesDeploymentPermissionBoundaryPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "organizations:*"
+              - "iam:*"
+              - "sso-directory:*"
+              - "sso:*"
+              - "s3:*"
+              - "cloudwatch:*"
+              - "cloudtrail:*"
+              - "lambda:*"
+            Resource: "*"
+
+  OrganizationServicesDeploymentRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /deployment/
+      # TODO
+      # This policies are way too open an need to be restricted
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSOrganizationsFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess
+        - arn:aws:iam::aws:policy/AWSSSODirectoryAdministrator
+        - arn:aws:iam::aws:policy/AWSSSOMasterAccountAdministrator
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccessV2
+      # TODO
+      # This permission boundary is way too open an need to be restricted
+      PermissionsBoundary: !Ref OrganizationServicesDeploymentPermissionBoundaryPolicy
+
+Outputs:
+  OrganizationDeploymentRoleArn:
+    Description: ARN of the OrganizationDeploymentRole
+    Value: !GetAtt OrganizationDeploymentRole.Arn
+  OrganizationServicesDeploymentRoleArn:
+    Description: ARN of the OrganizationServicesDeploymentRole
+    Value: !GetAtt OrganizationServicesDeploymentRole.Arn
