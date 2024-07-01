@@ -1,7 +1,6 @@
 {
     "default": {
         "identityCenterInstanceArn": "arn:aws:sso:::instance/ssoins-1234abcd1234abcd",
-        ,
         "supportedRegions": "us-east-1,eu-central-1",
         "organizationStackName": "organization-dev"
     },
