@@ -13,6 +13,9 @@ Parameters:
     Description: Deployment environment, e.g. dev for development
 
 Resources:
+  ##
+  # Organization deployment role
+  ##
   OrganizationDeploymentRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -41,32 +44,41 @@ Resources:
               - Sid: AllowCrudOrganization1
                 Effect: Allow
                 Action:
-                  - organizations:CreateOrganizationalUnit
+                  - organizations:DeclineHandshake
+                  - organizations:UntagResource
                   - organizations:DeleteOrganizationalUnit
+                  - organizations:AcceptHandshake
+                  - organizations:CancelHandshake
+                  - iam:GetServiceLinkedRoleDeletionStatus
+                  - organizations:RemoveAccountFromOrganization
+                  - organizations:TagResource
                   - organizations:UpdateOrganizationalUnit
+                  - iam:CreateServiceLinkedRole
                   - organizations:CloseAccount
+                  - iam:DeleteServiceLinkedRole
+                  - organizations:CreateOrganizationalUnit
                   - organizations:MoveAccount
-                  - organizations:InviteAccountToOrganization
                 Resource:
-                  - !Sub "arn:aws:organizations::${AWS::AccountId}:ou/o-*/ou-*"
+                  - !Sub "arn:aws:organizations::${AWS::AccountId}:resourcepolicy/o-*/rp-*"
+                  - !Sub "arn:aws:organizations:::policy/o-*/*/p-*"
                   - !Sub "arn:aws:organizations::${AWS::AccountId}:root/o-*/r-*"
+                  - !Sub "arn:aws:organizations:::handshake/o-*/*/h-*"
+                  - !Sub "arn:aws:organizations::${AWS::AccountId}:ou/o-*/ou-*"
                   - !Sub "arn:aws:organizations::${AWS::AccountId}:account/o-*/*"
+                  - !Sub "arn:aws:iam:::role/*"
               - Sid: AllowCrudOrganization2
                 Effect: Allow
                 Action:
+                  - organizations:LeaveOrganization
+                  - organizations:EnableAllFeatures
                   - organizations:CreateAccount
                   - organizations:DeleteOrganization
                   - organizations:CreateOrganization
                 Resource: "*" # Only * supported
-              - Sid: AllowCrudIamServiceLinkedRole
-                Effect: Allow
-                Action:
-                  - iam:CreateServiceLinkedRole
-                  - iam:DeleteServiceLinkedRole
-                  - iam:GetServiceLinkedRoleDeletionStatus
-                Resource:
-                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
 
+  ##
+  # Organization services deployment role
+  ##
   OrganizationServicesDeploymentPermissionBoundaryPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
@@ -100,8 +112,7 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: /deployment/
-      # TODO
-      # This policies are way too open an need to be restricted
+      # TODO restrict policies
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSOrganizationsFullAccess
         - arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess
@@ -112,8 +123,7 @@ Resources:
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccessV2
         - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
-      # TODO
-      # This permission boundary is way too open an need to be restricted
+      # TODO restrict permission boundary
       PermissionsBoundary: !Ref OrganizationServicesDeploymentPermissionBoundaryPolicy
 
 Outputs:

@@ -18,6 +18,9 @@ Parameters:
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-sso-permissionset.html#cfn-sso-permissionset-instancearn
     AllowedPattern: arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}
     Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
+  organizationId:
+    Type: String
+    Description: Organization ID
   organizationRootId:
     Type: String
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-organizations-organizationalunit.html#cfn-organizations-organizationalunit-parentid
@@ -81,7 +84,36 @@ Resources:
       ServiceToken: !Ref cloudformationOrganizationsAccessFunctionArn
       ServiceTimeout: 30
 
+  ##
+  # Access to OrganizationAccountAccess role in member accounts
+  ##
+  GrantAccessToOrganizationAccountAccessRolePolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Policy to assume the OrganizationAccountAccessRole in any organization member account
+      Path: !Ref policyPath
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Resource: "arn:aws:iam::*:role/OrganizationAccountAccessRole"
+            Condition:
+              StringEquals:
+                "aws:ResourceOrgID": !Ref organizationId
+              Bool:
+                "aws:MultiFactorAuthPresent": true
+
+  ManagementAdministratorGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+        - !Ref GrantAccessToOrganizationAccountAccessRolePolicy
+
+  ##
   # Policies
+  ##
   OrganizationPoliciesStack:
     # Organization policies for management account.
     # When using SERVICE_MANAGED StackSets, StackSets are not deployed automatically to the management account.
@@ -274,3 +306,6 @@ Outputs:
         PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
         ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
         UserManagerPermissionSetArn: !GetAtt UserManagerPermissionSet.PermissionSetArn
+  ManagementAdministratorGroup:
+    Description: ID of the ManagementAdministrator group
+    Value: !Ref ManagementAdministratorGroup

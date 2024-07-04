@@ -89,6 +89,7 @@ Resources:
       Parameters:
         environment: !Ref environment
         identityCenterInstanceArn: !Ref identityCenterInstanceArn
+        organizationId: !GetAtt Variables.organizationId
         organizationRootId: !GetAtt Variables.organizationRootId
         supportedRegions: !Ref supportedRegions
         securityAccountId: !GetAtt Variables.securityAccountId

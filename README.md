@@ -94,8 +94,9 @@ flowchart TB
             enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess}}
                 style enableCloudformation fill:darkgrey
 
-                enableCloudformation --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
-                    managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+                enableCloudformation --> managementPolicies[fa:fa-certificate\nManagement account\npolicies]
+                    managementPolicies --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
+                        managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
     end
 ```
 
@@ -124,7 +125,7 @@ flowchart TB
     1. Login to the AWS Console and open [CloudFormation](https://eu-central-1.console.aws.amazon.com/cloudformation/)
     2. Deploy manually the stack from template `deployment-roles.yml`:
        * Stack Name: `deployment-roles`
-       * Capabilities: `CAPABILITY_NAMED_IAM`
+       * Capabilities: `CAPABILITY_IAM`
     3. Extract the role ARNs from the outputs
 * By AWS CloudShell:
     1. Login to the AWS Console and open [CloudShell](https://eu-central-1.console.aws.amazon.com/cloudshell/)
@@ -281,3 +282,12 @@ aws s3api delete-objects \
     )"
 aws cloudformation delete-stack --stack-name aws-sam-cli-managed-default
 ```
+
+
+## Administration
+
+### Switch role to access `OrganizationAccountAccess` of a member account
+
+Use a user with Administrator permissions or an IAM user participating in the IAM group `ManagementAdministrator` to get the permissions to switch role.
+
+See https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_access.html#orgs_manage_accounts_access-cross-account-role
