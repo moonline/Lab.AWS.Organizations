@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
-Transform: AWS::Serverless-2016-10-31
+Transform:
+  - AWS::LanguageExtensions
+  - AWS::Serverless-2016-10-31
 
 Description: Identity Center with permission sets
 
@@ -18,6 +20,9 @@ Parameters:
     # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-sso-permissionset.html#cfn-sso-permissionset-instancearn
     AllowedPattern: arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}
     Description: ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'
+  identityStoreId:
+    Type: String
+    Description: ID of the Identity Store attached to the IAM Identity Center instance.
   organizationId:
     Type: String
     Description: Organization ID
@@ -29,6 +34,9 @@ Parameters:
   securityAccountId:
     Type: String
     Description: ID of the security account
+  allAccountIds:
+    Type: String
+    Description: Comma separated list of all organization accounts (except the management account)
   supportedRegions:
     Type: String
     Description: Comma separated list of supported regions
@@ -293,6 +301,70 @@ Resources:
         - Key: environment
           Value: !Ref environment
 
+  ##
+  # Groups
+  #
+  # Fn:ForEach is currently not supported by SAM :-(
+  # See https://github.com/aws/aws-sam-cli/issues/5647
+  # Migrate to Fn:ForEach when supported by SAM
+  ##
+  AdministratorGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: Administrator (all accounts)
+      DisplayName: administrator
+      IdentityStoreId: !Ref identityStoreId
+
+  AdministratorGroupAssignment0:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+      TargetId: !Select [0, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt AdministratorGroup.GroupId
+
+  AdministratorGroupAssignment1:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+      TargetId: !Select [1, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt AdministratorGroup.GroupId
+
+  # "Fn::ForEach::AdministratorGroupAssignment":
+  #   - AccountId
+  #   - !Split [",", !Ref allAccountIds]
+  #   - "AdministratorGroupAssignment${AccountId}":
+  #       Type: AWS::SSO::Assignment
+  #       Properties:
+  #         InstanceArn: !Ref identityCenterInstanceArn
+  #         PermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+  #         TargetId: !Ref AccountId
+  #         TargetType: "AWS_ACCOUNT"
+  #         PrincipalType: "GROUP"
+  #         PrincipalId: !GetAtt AdministratorGroup.GroupId
+
+  UserManagerGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: User manager (security account)
+      DisplayName: user-manager
+      IdentityStoreId: !Ref identityStoreId
+
+  UserManagerGroupAssignmentSecurityAccount:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt UserManagerPermissionSet.PermissionSetArn
+      TargetId: !Ref securityAccountId
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt UserManagerGroup.GroupId
+
 Outputs:
   PermissionSets:
     Description: Identity center permission sets
@@ -309,3 +381,11 @@ Outputs:
   ManagementAdministratorGroup:
     Description: ID of the ManagementAdministrator group
     Value: !Ref ManagementAdministratorGroup
+  Groups:
+    Description: SSO Group IDs
+    Value: !Sub
+      - |
+        AdministratorGroup: "${AdministratorGroupId}"
+        UserManagerGroup: "${UserManagerGroupId}"
+      - AdministratorGroupId: !GetAtt AdministratorGroup.GroupId
+        UserManagerGroupId: !GetAtt UserManagerGroup.GroupId

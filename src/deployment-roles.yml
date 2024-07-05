@@ -91,6 +91,7 @@ Resources:
               - "iam:*"
               - "sso-directory:*"
               - "sso:*"
+              - "identitystore:*"
               - "s3:*"
               - "cloudwatch:*"
               - "logs:*"

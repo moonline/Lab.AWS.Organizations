@@ -18,6 +18,9 @@ Parameters:
     Description: >
       ARN of an IAM Identity Center, e.g. 'arn:aws:sso:::instance/ssoins-xxxxxxxxxxxxxxxx'.
       Find by `aws sso-admin list-instances`.
+  identityStoreId:
+    Type: String
+    Description: ID of the Identity Store attached to the IAM Identity Center instance.
   supportedRegions:
     Type: String
     Description: >
@@ -68,6 +71,9 @@ Resources:
       securityAccountId:
         "Fn::ImportValue":
           "Fn::Sub": "${organizationStackName}:SecurityAccountId"
+      allAccountIds:
+        "Fn::ImportValue":
+          "Fn::Sub": "${organizationStackName}:AllAccountIds"
 
   LoggingStack:
     Type: AWS::CloudFormation::Stack
@@ -89,10 +95,12 @@ Resources:
       Parameters:
         environment: !Ref environment
         identityCenterInstanceArn: !Ref identityCenterInstanceArn
+        identityStoreId: !Ref identityStoreId
         organizationId: !GetAtt Variables.organizationId
         organizationRootId: !GetAtt Variables.organizationRootId
         supportedRegions: !Ref supportedRegions
         securityAccountId: !GetAtt Variables.securityAccountId
+        allAccountIds: !GetAtt Variables.allAccountIds
         organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
         cloudformationOrganizationsAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.CloudformationOrganizationsAccessFunctionArn
         organizationsDelegatedAdministratorFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsDelegatedAdministratorFunctionArn
@@ -120,3 +128,6 @@ Outputs:
   PermissionSets:
     Description: Identity center permission sets
     Value: !GetAtt IdentityStack.Outputs.PermissionSets
+  Groups:
+    Description: Identity center groups
+    Value: !GetAtt IdentityStack.Outputs.Groups

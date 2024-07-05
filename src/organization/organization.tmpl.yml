@@ -112,3 +112,11 @@ Outputs:
   SecurityAccountId:
     Description: ID of the security account
     Value: !Ref SecurityAccount
+  AllAccountIds:
+    Description: IDs of all accounts (except the management account)
+    Value: !Join
+      - ","
+      - - !Ref DevProject1SandboxAccount
+        - !Ref SecurityAccount
+    Export:
+      Name: !Sub "${AWS::StackName}:AllAccountIds"

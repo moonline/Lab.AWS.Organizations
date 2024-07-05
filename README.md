@@ -40,6 +40,7 @@ flowchart TB
 ---
 title: Organization deployment
 ---
+%% Icons see https://fontawesome.com/search?m=free
 flowchart TB
     subgraph organizationStack ["fa:fa-layer-group Organization Stack"]
         style organizationStack fill:orange
@@ -97,6 +98,7 @@ flowchart TB
                 enableCloudformation --> managementPolicies[fa:fa-certificate\nManagement account\npolicies]
                     managementPolicies --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
                         managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+                            permissionSets --> groups[fa:fa-user-group\nGroups]
     end
 ```
 
@@ -198,7 +200,7 @@ organization.yml
         ```
 
 
-## C Organization services deployment `/organization-services`
+## C - Organization services deployment `/organization-services`
 
 For instructions regarding SAM, see https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli.html.
 
@@ -223,7 +225,7 @@ sam build
 
 3. Get identity center instance ARN
     ```sh
-    aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0].InstanceArn'
+    aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0]'
     ```
     
 4. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
