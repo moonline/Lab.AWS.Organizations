@@ -207,6 +207,24 @@ Resources:
         - Key: module
           Value: management
 
+  ManagementBillingReadOnlyPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: ManagementBillingReadOnly
+      Description: Billing viewer permission set based on AWS AWSBillingReadOnlyAccess policy
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSBillingReadOnlyAccess"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            # Update version number when changing the policy so that CF registers the change
+            Location: ./billing-read-only-policy-v1.json
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+
   ManagementReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
     DependsOn:
@@ -370,11 +388,19 @@ Outputs:
     Description: Identity center permission sets
     Value: !Sub
       - |
+        ManagementAdministrator: "${ManagementAdministratorPermissionSetArn}"
+        ManagementPowerUser: "${ManagementPowerUserPermissionSetArn}"
+        ManagementBillingReadOnly: "${ManagementBillingReadOnlyPermissionSetArn}"
+        ManagementReadOnly: "${ManagementReadOnlyPermissionSetArn}"
         Administrator: "${AdministratorPermissionSetArn}"
         PowerUser: "${PowerUserPermissionSetArn}"
         ReadOnly: "${ReadOnlyPermissionSetArn}"
         UserManager: "${UserManagerPermissionSetArn}"
-      - AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+      - ManagementAdministratorPermissionSetArn: !GetAtt ManagementAdministratorPermissionSet.PermissionSetArn
+        ManagementPowerUserPermissionSetArn: !GetAtt ManagementPowerUserPermissionSet.PermissionSetArn
+        ManagementBillingReadOnlyPermissionSetArn: !GetAtt ManagementBillingReadOnlyPermissionSet.PermissionSetArn
+        ManagementReadOnlyPermissionSetArn: !GetAtt ManagementReadOnlyPermissionSet.PermissionSetArn
+        AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
         PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
         ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
         UserManagerPermissionSetArn: !GetAtt UserManagerPermissionSet.PermissionSetArn

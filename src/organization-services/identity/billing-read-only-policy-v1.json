@@ -1,0 +1,18 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowReadCostExplorer",
+            "Effect": "Allow",
+            "Action": [
+                "ce:Describe*",
+                "ce:Get*",
+                "ce:List*",
+                "cur:Get*",
+                "cur:List*",
+                "cur:Describe*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

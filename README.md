@@ -227,8 +227,9 @@ sam build
     ```sh
     aws sso-admin list-instances --region eu-central-1 | jq '.Instances[0]'
     ```
-    
-4. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
+4. Enable `IAM user and role access to Billing information` (login with root user):
+    * https://us-east-1.console.aws.amazon.com/billing/home#/account
+5. Deploy permission sets, roles, etc (replace the ARN with the output from 4)
     ```sh
     sam deploy --config-env prod \
         --role-arn "arn:aws:iam::123456789000:role/deployment/deployment-roles-OrganizationServicesDeploymentRole-abcdefghijkl" \ --parameter-overrides \
@@ -245,7 +246,7 @@ sam build
         $(cat samparameters.json | jq -r '.prod | to_entries | map([.key, .value]|join("=")) | join(" ")')
     ```
 
-5. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/6987d2e11148f607/users
+6. Create users and assign them to accounts and permission sets https://eu-central-1.console.aws.amazon.com/singlesignon/home?region=eu-central-1#!/instances/
 
 
 ### Get outputs
