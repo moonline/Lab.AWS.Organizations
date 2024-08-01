@@ -22,15 +22,34 @@ These are covered by the following custom resources:
 ---
 title: Organization
 ---
+%% Icons see https://fontawesome.com/search?m=free
 flowchart TB
-    organization([fa:fa-sitemap\nAWS Organizations root])
-        organization --- managementOU("fa:fa-folder-open\nManagement OU")
-            managementOU --- security["fa:fa-box\nSecurity"]
-        organization --- developmentOU("fa:fa-folder-open\nDevelopment OU")
-            developmentOU --- project1Dev["fa:fa-box\nProject 1 DEV"]
-            developmentOU --- project1Test["fa:fa-box\nProject 1 TEST"]
-        organization --- productionOU("fa:fa-folder-open\nProduction OU")
-            productionOU --- project1Prod["fa:fa-box\nProject 1 PROD"]
+    classDef account stroke:#CD2264,fill:white;
+    classDef unit stroke:#CD2264,stroke-dasharray: 5 5,fill:white;
+
+    organization["fa:fa-sitemap\nAWS\nOrganization"]
+    style organization fill:#CD2264,color:white,stroke:none;
+
+    management["fa:fa-box\nManagement\naccount"]
+    management:::account
+
+    organization --- organizationRoot[fa:fa-sitemap\nOrganizations root]
+    management --- organizationRoot
+        organizationRoot:::unit
+        organizationRoot --- managementOU["fa:fa-folder-open\nManagement OU"]
+            managementOU:::unit
+            managementOU --- security["fa:fa-box\nSecurity\naccount"]
+                security:::account
+        organizationRoot --- developmentOU["fa:fa-folder-open\nDevelopment OU"]
+            developmentOU:::unit
+            developmentOU --- project1Dev["fa:fa-box\nProject 1 DEV\naccount"]
+                project1Dev:::account
+            developmentOU --- project1Test["fa:fa-box\nProject 1 TEST\naccount"]
+                project1Test:::account
+        organizationRoot --- productionOU["fa:fa-folder-open\nProduction OU"]
+            productionOU:::unit
+            productionOU --- project1Prod["fa:fa-box\nProject 1 PROD\naccount"]
+                project1Prod:::account
 ```
 
 
@@ -42,64 +61,102 @@ title: Organization deployment
 ---
 %% Icons see https://fontawesome.com/search?m=free
 flowchart TB
+    classDef account stroke:#CD2264,fill:white;
+    classDef unit stroke:#CD2264,stroke-dasharray: 5 5,fill:white;
+    classDef stack stroke:black,fill:white;
+    classDef lambda stroke:none,fill:#ED7100,color:white;
+    classDef customResource stroke:none,fill:#E7157B,color:white;
+    classDef policies stroke:#DD344C,stroke-width:3px,fill:white;
+
     subgraph organizationStack ["fa:fa-layer-group Organization Stack"]
-        style organizationStack fill:orange
-        direction TB
+        direction LR
 
-        organization(fa:fa-sitemap\nAWS Organization)
-            organization --- organizationalUnits("fa:fa-folder-open\nOrganizational\nunits")
-                organizationalUnits --- accounts("fa:fa-box\nAccounts")
+        organization["fa:fa-sitemap\nAWS\nOrganization"]
+            style organization fill:#CD2264,color:white,stroke:none;
+            organization --- organizationalUnits["fa:fa-folder-open\nOrganizational\nunits"]
+                organizationalUnits:::unit
+                organizationalUnits --- accounts["fa:fa-box\nAccounts"]
+                    accounts:::account
     end
+        organizationStack:::stack
 
-    organizationStack --> enableIdentityCenter(["fa:fa-hands\nEnable Identity Center\nmanually in AWS\nConsole"])
-        style enableIdentityCenter fill:tomato
+    organizationStack --> enableIdentityCenter{{"fa:fa-hands\nEnable Identity Center\nmanually in AWS\nConsole"}}
+        style enableIdentityCenter fill:tomato,stroke:none,color:white;
 
-    subgraph organizationServicesStack ["fa:fa-layer-group Organization Services Stack"]
-        style organizationServicesStack fill:orange
-
-        orgServicesDeployment{fa:fa-rocket}
-    end
+    organizationServicesStack["fa:fa-layer-group Organization Services Stack"]
+        organizationServicesStack:::stack
 
     enableIdentityCenter --> organizationServicesStack
 
     subgraph customResourcesStack ["fa:fa-layer-group Custom Resources Stack"]
-        orgServicesDeployment --- customResources[fa:fa-cubes\nCustom resources]
-            customResources -.- organizationsServiceAccess[fa:fa-code\nOrganizations\nservice\naccess\nfunction]
-            customResources -.- organizationsPolicyType[fa:fa-code\nOrganizations\npolicy\ntype\nfunction]
-            customResources -.- organizationsDelegatedAdministrator[fa:fa-code\nOrganizations\ndelegated\nadministrator\nfunction]
-            customResources -..- cloudFormationOrganizationAccess[fa:fa-code\nCloudformation\norganization\naccess\nfunction]
+        direction TB
+        customResources[fa:fa-cubes\nCustom resources]
+            customResources:::customResource
+
+            customResources -..- organizationsServiceAccess[λ\nOrganizations\nservice\naccess\nfunction]
+                organizationsServiceAccess:::lambda
+
+            customResources -.- organizationsPolicyType[λ\nOrganizations\npolicy\ntype\nfunction]
+                organizationsPolicyType:::lambda
+
+            customResources -.- organizationsDelegatedAdministrator[λ\nOrganizations\ndelegated\nadministrator\nfunction]
+                organizationsDelegatedAdministrator:::lambda
+
+            customResources -..- cloudFormationOrganizationAccess[λ\nCloudformation\norganization\naccess\nfunction]
+                cloudFormationOrganizationAccess:::lambda
     end
+        customResourcesStack:::stack
+        organizationServicesStack --- customResourcesStack
 
     subgraph serviceControlPoliciesStack ["fa:fa-layer-group SCP Stack"]
-        orgServicesDeployment --- enableSCPs{{fa:fa-cube\nEnable Service\nControl Policies}}
-            style enableSCPs fill:darkgrey
+        direction TB
+        enableSCPs["fa:fa-cube\nEnable Service\nControl Policies"]
+            enableSCPs:::customResource
 
-            enableSCPs --> scps(fa:fa-shield-halved\nService Control\nPolicies)
+            enableSCPs --> scps(fa:fa-list-check\nService Control\nPolicies)
+                scps:::policies
     end
+        serviceControlPoliciesStack:::stack
+        organizationServicesStack --- serviceControlPoliciesStack
 
     subgraph loggingStack ["fa:fa-layer-group Logging Stack"]
-        orgServicesDeployment --- enableCloudTrail{{fa:fa-cube\nEnable CloudTrail\norganizations access}}
+        direction TB
+        enableCloudTrail["fa:fa-cube\nEnable CloudTrail\norganizations access"]
             enableCloudTrail --> cloudTrailBucket[fa:fa-bucket fa:fa-certificate\nCloudTrail logs\nbucket & policy]
-                style enableCloudTrail fill:darkgrey
+                enableCloudTrail:::customResource
+                style cloudTrailBucket stroke:none,fill:#7AA116,color:white;
 
                 cloudTrailBucket --> cloudTrail[fa:fa-table-list\nCloudTrail trail]
+                    style cloudTrail stroke:none,fill:#E7157B,color:white;
     end
+        loggingStack:::stack
+        organizationServicesStack --- loggingStack
 
     subgraph identityStack ["fa:fa-layer-group Identity Stack"]
-        orgServicesDeployment --- enableSSO{{fa:fa-cube\nEnable SSO\norganizations access}}
-            style enableSSO fill:darkgrey
+        direction TB
+        is((•))
+        style is stroke:none,fill:none;
 
-        orgServicesDeployment ---> registerDelegatedAdmin{{fa:fa-cube\nRegister delegated\nadministrator for\nIdentity Center}}
-            style registerDelegatedAdmin fill:darkgrey
+        is --- enableSSO["fa:fa-cube\nEnable SSO\norganizations access"]
+            enableSSO:::customResource
 
-            enableSSO --> enableCloudformation{{fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess}}
-                style enableCloudformation fill:darkgrey
+        is --- registerDelegatedAdmin["fa:fa-cube\nRegister delegated\nadministrator for\nIdentity Center"]
+            registerDelegatedAdmin:::customResource
 
-                enableCloudformation --> managementPolicies[fa:fa-certificate\nManagement account\npolicies]
+            enableSSO --> enableCloudformation["fa:fa-cube\nEnable Cloudformation\nStackSets organization\naccess"]
+                enableCloudformation:::customResource
+
+                enableCloudformation --> managementPolicies(fa:fa-list-check\nManagement account\npolicies)
+                    managementPolicies:::policies
                     managementPolicies --> managedPolicies[[fa:fa-certificate\nManaged policies Stackset]]
-                        managedPolicies --> permissionSets[fa:fa-key\nPermissionSets]
+                        managedPolicies:::stack
+                        managedPolicies --> permissionSets(fa:fa-shield-halved\nPermissionSets)
+                            permissionSets:::policies
                             permissionSets --> groups[fa:fa-user-group\nGroups]
+                                style groups stroke:none,fill:#DD344C,color:white;
     end
+        identityStack:::stack
+        organizationServicesStack --- identityStack
 ```
 
 
