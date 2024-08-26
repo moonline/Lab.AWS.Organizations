@@ -1,5 +1,46 @@
 # Echo utility - Declare variables
 
+```mermaid
+---
+title: Custom Resource Variables Helper
+---
+%% Icons see https://fontawesome.com/search?m=free
+flowchart LR
+    classDef stack stroke:black,fill:white;
+    classDef lambda stroke:none,fill:#ED7100,color:white;
+    classDef customResource stroke:none,fill:#E7157B,color:white;
+    classDef policies stroke:#DD344C,stroke-width:3px,fill:white;
+
+
+    subgraph customResourcesStack ["fa:fa-layer-group Custom Resources CF Stack"]
+        direction TB
+            echoUtilityFunction[λ\nEcho utility\nfunction]
+                echoUtilityFunction:::lambda
+
+            customResourceHelperLayer[fa:fa-cubes\nCustom resource\nhelper layer]
+                customResourceHelperLayer:::lambda
+
+            lambdaExecutionPolicy(fa:fa-list-check\nAWSLambdaExecute\npolicy)
+                lambdaExecutionPolicy:::policies
+
+            echoUtilityFunction --- customResourceHelperLayer
+            echoUtilityFunction --- lambdaExecutionPolicy
+    end
+        customResourcesStack:::stack
+    
+
+    subgraph mainStack ["fa:fa-layer-group Main CF Stack"]
+        direction TB
+        variablesResource["fa:fa-cube\nVariables\nresource"]
+            variablesResource:::customResource
+
+            variablesResource --- somethingHandlerFunction["fa:fa-cube\nSomething handler\nfunction"]
+                somethingHandlerFunction:::lambda
+    end
+        mainStack:::stack
+        customResourcesStack -.- mainStack
+```
+
 ## Syntax
 
 To declare this entity in your AWS CloudFormation template, use the same syntax as Custom Resources.

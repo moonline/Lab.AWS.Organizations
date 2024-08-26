@@ -118,5 +118,3 @@ Outputs:
       - ","
       - - !Ref DevProject1SandboxAccount
         - !Ref SecurityAccount
-    Export:
-      Name: !Sub "${AWS::StackName}:AllAccountIds"

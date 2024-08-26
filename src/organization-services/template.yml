@@ -37,6 +37,12 @@ Parameters:
   organizationStackName:
     Type: String
     Description: Organization stack name, used to import organization properties
+  allAccountIds:
+    Type: String
+    Description: IDs of all accounts
+  notificationEmails:
+    Type: String
+    Description: Email addresses where AWS notifications should be sent to. E.g. billing alarms
 
 Resources:
   CustomResourcesStack:
@@ -52,10 +58,13 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: component
+          Value: custom-resources
 
   Variables:
     Type: Custom::EchoUtility
-    DependsOn: [CustomResourcesStack]
     Properties:
       ServiceToken: !GetAtt CustomResourcesStack.Outputs.EchoUtilityFunctionArn
       ServiceTimeout: 10
@@ -71,9 +80,6 @@ Resources:
       securityAccountId:
         "Fn::ImportValue":
           "Fn::Sub": "${organizationStackName}:SecurityAccountId"
-      allAccountIds:
-        "Fn::ImportValue":
-          "Fn::Sub": "${organizationStackName}:AllAccountIds"
 
   LoggingStack:
     Type: AWS::CloudFormation::Stack
@@ -88,6 +94,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: component
+          Value: logging
 
   IdentityStack:
     Type: AWS::CloudFormation::Stack
@@ -100,7 +110,7 @@ Resources:
         organizationRootId: !GetAtt Variables.organizationRootId
         supportedRegions: !Ref supportedRegions
         securityAccountId: !GetAtt Variables.securityAccountId
-        allAccountIds: !GetAtt Variables.allAccountIds
+        allAccountIds: !Ref allAccountIds
         organizationsAwsServiceAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsAwsServiceAccessFunctionArn
         cloudformationOrganizationsAccessFunctionArn: !GetAtt CustomResourcesStack.Outputs.CloudformationOrganizationsAccessFunctionArn
         organizationsDelegatedAdministratorFunctionArn: !GetAtt CustomResourcesStack.Outputs.OrganizationsDelegatedAdministratorFunctionArn
@@ -109,6 +119,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: component
+          Value: identity
 
   ServiceControlPoliciesStack:
     Type: AWS::CloudFormation::Stack
@@ -123,6 +137,26 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: component
+          Value: policies
+
+  CostManagementStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        environment: !Ref environment
+        notificationEmails: !Ref notificationEmails
+      TemplateURL: "./cost-management.yml"
+      TimeoutInMinutes: 5
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: component
+          Value: cost-management
 
 Outputs:
   PermissionSets:

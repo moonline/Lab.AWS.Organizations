@@ -98,6 +98,7 @@ Resources:
               - "cloudtrail:*"
               - "lambda:*"
               - "cloudformation:*"
+              - "sns:*"
             Resource: "*"
 
   OrganizationServicesDeploymentRole:
@@ -124,6 +125,7 @@ Resources:
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccessV2
         - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
       # TODO restrict permission boundary
       PermissionsBoundary: !Ref OrganizationServicesDeploymentPermissionBoundaryPolicy
 

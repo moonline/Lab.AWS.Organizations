@@ -134,6 +134,12 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
+        - Key: scope
+          Value: management
       TemplateURL: ./managed-policies.yml
       TimeoutInMinutes: 10
 
@@ -169,6 +175,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
 
   ##
   # Management account permission sets
@@ -187,7 +197,11 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
         - Key: module
+          Value: identity
+        - Key: scope
           Value: management
 
   ManagementPowerUserPermissionSet:
@@ -204,7 +218,38 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
         - Key: module
+          Value: identity
+        - Key: scope
+          Value: management
+
+  ManagementDevOpsPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: ManagementDevOps
+      Description: DevOps for management account - full access to CloudFormation and S3
+      InstanceArn: !Ref identityCenterInstanceArn
+      ManagedPolicies:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSCloudFormationFullAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonS3FullAccess"
+      InlinePolicy:
+        "Fn::Transform":
+          Name: "AWS::Include"
+          Parameters:
+            # Update version number when changing the policy
+            # Otherwise CloudFormation will not register the change
+            Location: ./dev-ops-policy-v1.json
+            # TODO limit permission to organization
+      Tags:
+        - Key: environment
+          Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
+        - Key: scope
           Value: management
 
   ManagementBillingReadOnlyPermissionSet:
@@ -215,6 +260,7 @@ Resources:
       InstanceArn: !Ref identityCenterInstanceArn
       ManagedPolicies:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AWSBillingReadOnlyAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/CloudWatchReadOnlyAccess"
       InlinePolicy:
         "Fn::Transform":
           Name: "AWS::Include"
@@ -224,6 +270,12 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
+        - Key: scope
+          Value: management
 
   ManagementReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
@@ -239,7 +291,11 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
         - Key: module
+          Value: identity
+        - Key: scope
           Value: management
 
   ##
@@ -259,6 +315,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
 
   PowerUserPermissionSet:
     Type: AWS::SSO::PermissionSet
@@ -282,6 +342,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
 
   ReadOnlyPermissionSet:
     Type: AWS::SSO::PermissionSet
@@ -297,6 +361,10 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
 
   UserManagerPermissionSet:
     Type: AWS::SSO::PermissionSet
@@ -313,11 +381,15 @@ Resources:
           Parameters:
             # Update version number when changing the policy
             # Otherwise CloudFormation will not register the change
-            Location: ./user-manager-policy-v3.json
+            Location: ./user-manager-policy-v4.json
             # TODO limit permission to organization and account
       Tags:
         - Key: environment
           Value: !Ref environment
+        - Key: application
+          Value: aws-org
+        - Key: module
+          Value: identity
 
   ##
   # Groups
@@ -353,6 +425,16 @@ Resources:
       PrincipalType: "GROUP"
       PrincipalId: !GetAtt AdministratorGroup.GroupId
 
+  AdministratorGroupAssignment2:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
+      TargetId: !Select [2, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt AdministratorGroup.GroupId
+
   # "Fn::ForEach::AdministratorGroupAssignment":
   #   - AccountId
   #   - !Split [",", !Ref allAccountIds]
@@ -365,6 +447,86 @@ Resources:
   #         TargetType: "AWS_ACCOUNT"
   #         PrincipalType: "GROUP"
   #         PrincipalId: !GetAtt AdministratorGroup.GroupId
+
+  PowerUserGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: Power user (all accounts)
+      DisplayName: power-user
+      IdentityStoreId: !Ref identityStoreId
+
+  PowerUserGroupAssignment0:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
+      TargetId: !Select [0, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt PowerUserGroup.GroupId
+
+  PowerUserGroupAssignment1:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
+      TargetId: !Select [1, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt PowerUserGroup.GroupId
+
+  PowerUserGroupAssignment2:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
+      TargetId: !Select [2, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt PowerUserGroup.GroupId
+
+  # "Fn::ForEach::PowerUserGroupAssignment":
+  # TODO
+
+  ReadOnlyGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: Read-only (all accounts)
+      DisplayName: read-only
+      IdentityStoreId: !Ref identityStoreId
+
+  ReadOnlyGroupAssignment0:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
+      TargetId: !Select [0, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt ReadOnlyGroup.GroupId
+
+  ReadOnlyGroupAssignment1:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
+      TargetId: !Select [1, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt ReadOnlyGroup.GroupId
+
+  ReadOnlyGroupAssignment2:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref identityCenterInstanceArn
+      PermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
+      TargetId: !Select [2, !Split [",", !Ref allAccountIds]]
+      TargetType: "AWS_ACCOUNT"
+      PrincipalType: "GROUP"
+      PrincipalId: !GetAtt ReadOnlyGroup.GroupId
+
+  # "Fn::ForEach::ReadOnlyGroupAssignment":
+  # TODO
 
   UserManagerGroup:
     Type: AWS::IdentityStore::Group
@@ -384,34 +546,42 @@ Resources:
       PrincipalId: !GetAtt UserManagerGroup.GroupId
 
 Outputs:
+  ManagementAdministratorGroup:
+    Description: ID of the ManagementAdministrator group
+    Value: !Ref ManagementAdministratorGroup
   PermissionSets:
-    Description: Identity center permission sets
+    Description: Identity center permission set ARNs
     Value: !Sub
       - |
-        ManagementAdministrator: "${ManagementAdministratorPermissionSetArn}"
-        ManagementPowerUser: "${ManagementPowerUserPermissionSetArn}"
-        ManagementBillingReadOnly: "${ManagementBillingReadOnlyPermissionSetArn}"
-        ManagementReadOnly: "${ManagementReadOnlyPermissionSetArn}"
-        Administrator: "${AdministratorPermissionSetArn}"
-        PowerUser: "${PowerUserPermissionSetArn}"
-        ReadOnly: "${ReadOnlyPermissionSetArn}"
-        UserManager: "${UserManagerPermissionSetArn}"
+        {
+          "ManagementAdministrator": "${ManagementAdministratorPermissionSetArn}",
+          "ManagementPowerUser": "${ManagementPowerUserPermissionSetArn}",
+          "ManagementBillingReadOnly": "${ManagementBillingReadOnlyPermissionSetArn}",
+          "ManagementReadOnly": "${ManagementReadOnlyPermissionSetArn}",
+          "Administrator": "${AdministratorPermissionSetArn}",
+          "PowerUser": "${PowerUserPermissionSetArn}",
+          "UserManager": "${UserManagerPermissionSetArn}",
+          "ReadOnly": "${ReadOnlyPermissionSetArn}"
+        }
       - ManagementAdministratorPermissionSetArn: !GetAtt ManagementAdministratorPermissionSet.PermissionSetArn
         ManagementPowerUserPermissionSetArn: !GetAtt ManagementPowerUserPermissionSet.PermissionSetArn
         ManagementBillingReadOnlyPermissionSetArn: !GetAtt ManagementBillingReadOnlyPermissionSet.PermissionSetArn
         ManagementReadOnlyPermissionSetArn: !GetAtt ManagementReadOnlyPermissionSet.PermissionSetArn
         AdministratorPermissionSetArn: !GetAtt AdministratorPermissionSet.PermissionSetArn
         PowerUserPermissionSetArn: !GetAtt PowerUserPermissionSet.PermissionSetArn
-        ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
         UserManagerPermissionSetArn: !GetAtt UserManagerPermissionSet.PermissionSetArn
-  ManagementAdministratorGroup:
-    Description: ID of the ManagementAdministrator group
-    Value: !Ref ManagementAdministratorGroup
+        ReadOnlyPermissionSetArn: !GetAtt ReadOnlyPermissionSet.PermissionSetArn
   Groups:
-    Description: SSO Group IDs
+    Description: Identity center group IDs
     Value: !Sub
       - |
-        AdministratorGroup: "${AdministratorGroupId}"
-        UserManagerGroup: "${UserManagerGroupId}"
+        {
+          "Administrator": "${AdministratorGroupId}",
+          "PowerUser": "${PowerUserGroupId}",
+          "UserManager": "${UserManagerGroupId}",
+          "ReadOnly": "${ReadOnlyGroupId}"
+        }
       - AdministratorGroupId: !GetAtt AdministratorGroup.GroupId
+        PowerUserGroupId: !GetAtt PowerUserGroup.GroupId
         UserManagerGroupId: !GetAtt UserManagerGroup.GroupId
+        ReadOnlyGroupId: !GetAtt ReadOnlyGroup.GroupId

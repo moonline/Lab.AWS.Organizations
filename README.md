@@ -65,6 +65,10 @@ flowchart TB
     classDef unit stroke:#CD2264,stroke-dasharray: 5 5,fill:white;
     classDef stack stroke:black,fill:white;
     classDef lambda stroke:none,fill:#ED7100,color:white;
+    classDef apiGateway stroke:none,fill:#E7157B,color:white;
+    classDef dynamoDB stroke:none,fill:#C925D1,color:white;
+    classDef cloudwatchLogs stroke:none,fill:#E7157B,color:white;
+    classDef component stroke:black,stroke-dasharray: 5 5,fill:none;
     classDef customResource stroke:none,fill:#E7157B,color:white;
     classDef policies stroke:#DD344C,stroke-width:3px,fill:white;
 

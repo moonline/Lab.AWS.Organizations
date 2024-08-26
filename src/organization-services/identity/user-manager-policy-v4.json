@@ -22,6 +22,27 @@
             ]
         },
         {
+            "Sid": "AllowEditSsoUsers",
+            "Effect": "Allow",
+            "Action": [
+                "sso-directory:DisableUser",
+                "sso-directory:UpdateUser",
+                "sso-directory:RemoveMemberFromGroup",
+                "sso-directory:EnableUser",
+                "sso-directory:StartVirtualMfaDeviceRegistration",
+                "sso-directory:UpdatePassword",
+                "sso-directory:CreateUser",
+                "sso-directory:DeleteUser",
+                "sso-directory:UpdateUserName",
+                "sso-directory:AddMemberToGroup",
+                "sso-directory:VerifyEmail",
+                "sso-directory:DeleteMfaDeviceForUser",
+                "sso-directory:UpdateMfaDeviceForUser",
+                "sso-directory:CompleteVirtualMfaDeviceRegistration"
+            ],
+            "Resource": "*"
+        },
+        {
             "Sid": "AllowEditAccountAssignment",
             "Effect": "Allow",
             "Action": [

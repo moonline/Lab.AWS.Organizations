@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: Organization cost management
+
+Parameters:
+  environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment, e.g. dev for development
+  notificationEmails:
+    Type: String
+    Description: Email address where AWS notifications should be sent to. E.g. billing alarms
+
+Mappings:
+  costThreshold:
+    service:
+      total: 10
+      s3: 5
+
+Resources:
+  # Credits to https://github.com/tarasowski/aws-billing-alarm-cloudformation-template/blob/master/template.yaml
+  BillingAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: BillingAlarm
+
+  BillingAlarmSubscriberEmail0:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Select [0, !Split [",", !Ref notificationEmails]]
+      Protocol: email
+      TopicArn: !Ref BillingAlarmTopic
+
+  TotalCostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "billing-alert-total-${environment}"
+      AlarmDescription: !Sub
+        - "Alarm if estimated '${environment}' environment charges for '${service}' exceed USD ${threshold}"
+        - threshold: !FindInMap [costThreshold, service, total]
+          service: Total
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      MetricName: EstimatedCharges
+      Namespace: AWS/Billing
+      Statistic: Maximum
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      Period: 21600 # 6h
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !FindInMap [costThreshold, service, total]
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+
+  S3CostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "billing-alert-s3-${environment}"
+      AlarmDescription: !Sub
+        - "Alarm if estimated '${environment}' environment charges for '${service}' exceed USD ${threshold}"
+        - threshold: !FindInMap [costThreshold, service, s3]
+          service: S3
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      MetricName: EstimatedCharges
+      Namespace: AWS/Billing
+      Statistic: Maximum
+      Dimensions:
+        - Name: ServiceName
+          Value: AmazonS3
+        - Name: Currency
+          Value: USD
+      Period: 21600 # 6h
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !FindInMap [costThreshold, service, s3]
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
